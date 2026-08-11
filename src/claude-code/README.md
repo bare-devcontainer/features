@@ -18,6 +18,12 @@ Installs Claude Code, Anthropic's agentic coding CLI, from the official APT repo
 | version | APT package version of claude-code to install. Use "latest" for the newest available version, or an exact version string as reported by `apt-cache policy claude-code`. | string | latest |
 | keepAptSource | Keep the Claude Code APT source and signing key in the image so the package can be upgraded later. When false, both are removed after installation. | boolean | true |
 
+## Customizations
+
+### VS Code Extensions
+
+- `anthropic.claude-code`
+
 ## Details
 
 - Requires a Debian or Ubuntu based image.
@@ -26,6 +32,29 @@ Installs Claude Code, Anthropic's agentic coding CLI, from the official APT repo
 - The APT source is written to `/etc/apt/sources.list.d/claude-code.list`. Set
   `keepAptSource` to `false` to drop the source and key once installation
   finishes.
+
+### VS Code extension
+
+The feature also requests the Claude Code VS Code extension, so an editor that
+attaches to the container gets the sidebar, inline diffs and the IDE
+integration alongside the CLI:
+
+```json
+"customizations": {
+    "vscode": {
+        "extensions": [
+            "anthropic.claude-code"
+        ]
+    }
+}
+```
+
+Extension installation is done by the attaching client, not by the install
+script, so this applies to VS Code, Cursor and GitHub Codespaces, and is
+ignored by clients that do not consume `customizations.vscode` (the
+`devcontainer` CLI, or attaching from another editor). The CLI is installed
+either way. Nothing in `devcontainer.json` can remove an extension a feature
+asks for, so uninstall it in the container if it is not wanted.
 
 ### Persisting configuration and credentials
 
