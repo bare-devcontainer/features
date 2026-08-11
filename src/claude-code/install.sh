@@ -62,12 +62,12 @@ fi
 
 rm -rf /var/lib/apt/lists/*
 
-USERNAME="${_REMOTE_USER:-root}"
+username="${_REMOTE_USER:-root}"
 CONFIG_DIR="/var/lib/claude-code"
 CONFIG_GROUP="claude-code"
 
-if ! passwd_entry="$(getent passwd "${USERNAME}")"; then
-    echo "(!) Remote user '${USERNAME}' was not found in the password database." >&2
+if ! passwd_entry="$(getent passwd "${username}")"; then
+    echo "(!) Remote user '${username}' was not found in the password database." >&2
     exit 1
 fi
 
@@ -77,17 +77,17 @@ mkdir -p "${CONFIG_DIR}"
 if ! getent group "${CONFIG_GROUP}" >/dev/null; then
     groupadd --system "${CONFIG_GROUP}"
 fi
-usermod -aG "${CONFIG_GROUP}" "${USERNAME}"
+usermod -aG "${CONFIG_GROUP}" "${username}"
 
 # Transfer any existing configuration from the remote user's home directory to the mounted volume if it exists.
-USER_HOME="${_REMOTE_USER_HOME:-$(printf '%s' "${passwd_entry}" | cut -d: -f6)}"
-if [ -n "${USER_HOME}" ] && [ -d "${USER_HOME}/.claude" ] && [ -z "$(ls -A "${CONFIG_DIR}")" ]; then
-    cp -a "${USER_HOME}/.claude/." "${CONFIG_DIR}/"
+user_home="${_REMOTE_USER_HOME:-$(printf '%s' "${passwd_entry}" | cut -d: -f6)}"
+if [ -n "${user_home}" ] && [ -d "${user_home}/.claude" ] && [ -z "$(ls -A "${CONFIG_DIR}")" ]; then
+    cp -a "${user_home}/.claude/." "${CONFIG_DIR}/"
 fi
 
 # Set the ownership and permissions of the configuration directory.
 # The setgid bit keeps entries created later in the shared group.
-chown -R "${USERNAME}:${CONFIG_GROUP}" "${CONFIG_DIR}"
+chown -R "${username}:${CONFIG_GROUP}" "${CONFIG_DIR}"
 chmod -R g+rwX "${CONFIG_DIR}"
 chmod 2775 "${CONFIG_DIR}"
 

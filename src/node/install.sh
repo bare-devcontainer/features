@@ -179,13 +179,13 @@ grep "  ${tarball}\$" "${tmpdir}/SHASUMS256.txt" \
 # directories the archive recreates.
 tar xJf "${tmpdir}/${tarball}" -C "${PREFIX}" --strip-components=1 --no-same-owner
 
-USERNAME="${_REMOTE_USER:-root}"
-if ! passwd_entry="$(getent passwd "${USERNAME}")"; then
-    echo "(!) Remote user '${USERNAME}' was not found in the password database." >&2
+username="${_REMOTE_USER:-root}"
+if ! passwd_entry="$(getent passwd "${username}")"; then
+    echo "(!) Remote user '${username}' was not found in the password database." >&2
     exit 1
 fi
-USER_HOME="${_REMOTE_USER_HOME:-$(printf '%s' "${passwd_entry}" | cut -d: -f6)}"
-USER_GROUP="$(id -gn "${USERNAME}")"
+user_home="${_REMOTE_USER_HOME:-$(printf '%s' "${passwd_entry}" | cut -d: -f6)}"
+user_group="$(id -gn "${username}")"
 
 if [ "${COREPACK}" != "none" ]; then
     if [ ! -x "${PREFIX}/bin/npm" ]; then
@@ -204,13 +204,13 @@ if [ "${COREPACK}" != "none" ]; then
     # ~/.cache/node/corepack. Creating it here keeps the first invocation from
     # writing into a root-owned cache directory. Each level is chowned, since
     # the remote user may own none of them yet.
-    if [ -d "${USER_HOME}" ]; then
-        corepack_cache="${USER_HOME}/.cache/node/corepack"
+    if [ -d "${user_home}" ]; then
+        corepack_cache="${user_home}/.cache/node/corepack"
         mkdir -p "${corepack_cache}"
-        chown "${USERNAME}:${USER_GROUP}" \
-            "${USER_HOME}/.cache" "${USER_HOME}/.cache/node" "${corepack_cache}"
+        chown "${username}:${user_group}" \
+            "${user_home}/.cache" "${user_home}/.cache/node" "${corepack_cache}"
     else
-        echo "(*) Home directory '${USER_HOME}' does not exist; skipping the Corepack cache directory." >&2
+        echo "(*) Home directory '${user_home}' does not exist; skipping the Corepack cache directory." >&2
     fi
 else
     # Release lines up to Node.js 24 bundle Corepack, so leaving it out means
