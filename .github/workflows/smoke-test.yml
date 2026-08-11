@@ -1,0 +1,121 @@
+name: Smoke Test
+
+# Starts a real Dev Container per feature and base image combination, with the
+# feature added at its default options, and runs the feature's smoke_test.sh
+# inside it as the remote user.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # renovate: datasource=npm depName=@devcontainers/cli
+  DEVCONTAINER_CLI_VERSION: "0.88.0"
+
+jobs:
+  discover:
+    name: Discover features
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      features: ${{ steps.discover.outputs.features }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: List features under src/
+        id: discover
+        run: |
+          set -euo pipefail
+          features="$(find src -mindepth 2 -maxdepth 2 -name devcontainer-feature.json -printf '%h\n' \
+            | xargs -r -n1 basename \
+            | sort \
+            | jq -R -s -c 'split("\n") | map(select(length > 0))')"
+
+          if [ "${features}" = "[]" ]; then
+            echo "::error::No features found under src/"
+            exit 1
+          fi
+
+          echo "features=${features}" >> "${GITHUB_OUTPUT}"
+          echo "Discovered features: ${features}"
+
+  smoke-test:
+    name: ${{ matrix.feature }} on ${{ matrix.image }}
+    needs: discover
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        feature: ${{ fromJSON(needs.discover.outputs.features) }}
+        # Deliberately floating tags: features have to keep working against the
+        # base images users actually pull today, not a digest frozen at merge
+        # time. Renovate therefore does not pin these.
+        image:
+          - mcr.microsoft.com/devcontainers/base:debian
+          - ghcr.io/bare-devcontainer/debian:trixie
+    env:
+      FEATURE: ${{ matrix.feature }}
+      IMAGE: ${{ matrix.image }}
+      WORKSPACE: ${{ runner.temp }}/smoke
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install the Dev Containers CLI
+        run: npm install --global "@devcontainers/cli@${DEVCONTAINER_CLI_VERSION}"
+
+      - name: Assemble the test workspace
+        run: |
+          set -euo pipefail
+
+          if [ ! -f "src/${FEATURE}/smoke_test.sh" ]; then
+            echo "::error::src/${FEATURE}/smoke_test.sh is missing; every feature must ship one."
+            exit 1
+          fi
+
+          # The feature is copied next to the generated devcontainer.json so it
+          # can be referenced as a local path, which installs the working tree
+          # copy rather than a published release.
+          rm -rf "${WORKSPACE}"
+          mkdir -p "${WORKSPACE}/.devcontainer"
+          cp -R "src/${FEATURE}" "${WORKSPACE}/.devcontainer/${FEATURE}"
+
+          # The mount is spelled out rather than left to the CLI default so the
+          # path the smoke test runs from is known here.
+          jq -n \
+            --arg image "${IMAGE}" \
+            --arg feature "./${FEATURE}" \
+            --arg mount "source=${WORKSPACE},target=/workspaces/smoke,type=bind" \
+            '{
+              name: "smoke-test",
+              image: $image,
+              workspaceMount: $mount,
+              workspaceFolder: "/workspaces/smoke",
+              features: {($feature): {}}
+            }' \
+            > "${WORKSPACE}/.devcontainer/devcontainer.json"
+
+          jq . "${WORKSPACE}/.devcontainer/devcontainer.json"
+
+      - name: Start the Dev Container
+        run: devcontainer up --workspace-folder "${WORKSPACE}" --remove-existing-container
+
+      - name: Run smoke_test.sh
+        run: |
+          devcontainer exec --workspace-folder "${WORKSPACE}" \
+            bash "/workspaces/smoke/.devcontainer/${FEATURE}/smoke_test.sh"
