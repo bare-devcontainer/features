@@ -193,10 +193,12 @@ if [ "${COREPACK}" != "none" ]; then
         exit 1
     fi
 
-    "${PREFIX}/bin/npm" install -g --no-audit --no-fund "corepack@${COREPACK}"
-    # npm's cache is only needed for the install above, and root's copy is
-    # unreachable for the remote user anyway.
-    rm -rf "${HOME:-/root}/.npm"
+    # npm's cache is only of use to this one install, so it is kept with the
+    # other downloads instead of in a home directory: the default location is
+    # the remote user's own cache when the remote user is root, and may hold
+    # entries this feature did not put there in any case.
+    "${PREFIX}/bin/npm" install -g --cache "${tmpdir}/npm-cache" \
+        --no-audit --no-fund "corepack@${COREPACK}"
 
     # Corepack downloads package managers into COREPACK_HOME, which defaults to
     # ~/.cache/node/corepack. Creating it here keeps the first invocation from
