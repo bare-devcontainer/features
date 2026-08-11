@@ -70,9 +70,21 @@ rm -rf /var/lib/apt/lists/*
 # configuration survives rebuilds. The volume target cannot depend on the remote
 # user's home directory (feature mounts are static), hence the indirection.
 USERNAME="${_REMOTE_USER:-root}"
-USER_HOME="${_REMOTE_USER_HOME:-$(getent passwd "${USERNAME}" | cut -d: -f6)}"
-USER_GROUP="$(id -gn "${USERNAME}")"
 CONFIG_DIR="/var/lib/claude-code"
+
+# Both the ownership applied below and the home directory lookup need the
+# account to exist. Resolve it once and report a missing account here, since
+# under `set -e` a failing getent/id would otherwise abort the script with a
+# bare non-zero status.
+if ! passwd_entry="$(getent passwd "${USERNAME}")"; then
+    echo "(!) Remote user '${USERNAME}' was not found in the password database." >&2
+    exit 1
+fi
+
+# The password database is only consulted as a fallback: the CLI-provided home
+# directory wins when it is set.
+USER_HOME="${_REMOTE_USER_HOME:-$(printf '%s' "${passwd_entry}" | cut -d: -f6)}"
+USER_GROUP="$(id -gn "${USERNAME}")"
 
 # A named volume is seeded from the image on first use, so creating the
 # directory with the right ownership here also makes the volume itself owned by
