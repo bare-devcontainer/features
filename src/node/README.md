@@ -57,8 +57,9 @@ Corepack is installed but not enabled, matching the image. Its shims go into
 --install-directory` writes them somewhere the remote user owns instead.
 
 Set `keepNpm` to `true` to keep npm and npx, or `corepack` to `none` to leave
-Corepack out. Corepack is installed with npm, so `corepack: "none"` together
-with `keepNpm: false` yields a Node.js with no package manager at all.
+Corepack out — including the copy that release lines up to Node.js 24 bundle,
+which is removed along with it. `corepack: "none"` together with `keepNpm: false`
+yields a Node.js with no package manager at all.
 
 Corepack downloads package managers into `COREPACK_HOME`, which defaults to
 `~/.cache/node/corepack`. The feature creates that directory for the remote user

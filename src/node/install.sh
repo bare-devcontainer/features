@@ -125,11 +125,13 @@ resolve_version() {
     entries="${tmpdir}/releases.txt"
     download "${DIST_URL}/index.json" "${index}"
 
-    # Releases are put one per line so each can be matched on its own, whether
-    # or not the index is served pretty-printed. The intermediate file keeps
-    # grep's early exit from ending the split with a broken pipe.
+    # Matching is per line, which is how nodejs.org serves the index: one
+    # release object per line, without spaces around the separators. The sed
+    # covers the array arriving on a single line instead; any other layout ends
+    # in the no-match error below rather than a wrong version. The intermediate
+    # file keeps grep's early exit from ending the split with a broken pipe.
     sed 's/},[[:space:]]*{/}\n{/g' "${index}" > "${entries}"
-    resolved="$(grep -m1 -F "${selector}" "${entries}" | sed -n 's/.*"version":"\(v[^"]*\)".*/\1/p')"
+    resolved="$(grep -m1 -F "${selector}" "${entries}" | sed -n 's/.*"version":"\(v[^"]*\)".*/\1/p' || true)"
 
     if [ -z "${resolved}" ]; then
         echo "(!) No Node.js release matches '$1'." >&2
@@ -171,7 +173,11 @@ grep "  ${tarball}\$" "${tmpdir}/SHASUMS256.txt" \
     | sed "s|  ${tarball}\$|  ${tmpdir}/${tarball}|" \
     | sha256sum -c -
 
-tar xJf "${tmpdir}/${tarball}" -C "${PREFIX}" --strip-components=1
+# The tarball records uid/gid 1000, which is the remote user in these images, so
+# ownership is left to the extracting root rather than restored from the archive.
+# It would otherwise be handed to that user, along with the /usr/local
+# directories the archive recreates.
+tar xJf "${tmpdir}/${tarball}" -C "${PREFIX}" --strip-components=1 --no-same-owner
 
 USERNAME="${_REMOTE_USER:-root}"
 if ! passwd_entry="$(getent passwd "${USERNAME}")"; then
@@ -204,6 +210,10 @@ if [ "${COREPACK}" != "none" ]; then
     else
         echo "(*) Home directory '${USER_HOME}' does not exist; skipping the Corepack cache directory." >&2
     fi
+else
+    # Release lines up to Node.js 24 bundle Corepack, so leaving it out means
+    # removing the copy the tarball brought along.
+    rm -rf "${PREFIX}/lib/node_modules/corepack" "${PREFIX}/bin/corepack"
 fi
 
 # Removed last, so Corepack can still be installed with npm above.

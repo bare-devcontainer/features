@@ -32,6 +32,11 @@ check "node reports a version" node --version
 check "node is installed under /usr/local" \
     bash -c 'test "$(command -v node)" = /usr/local/bin/node'
 check "node runs a program" node -e 'console.log("Hello, world!")'
+# The release tarball records uid 1000, the remote user in these images, so an
+# extraction that restores it would hand the runtime to the account using it.
+check "the installed files are owned by root" \
+    bash -c 'test "$(stat -c %u /usr/local/bin/node)" = 0
+             test "$(stat -c %u /usr/local/lib/node_modules)" = 0'
 check "corepack is on PATH" command -v corepack
 check "corepack reports a version" corepack --version
 check "npm and npx are removed by default" \
