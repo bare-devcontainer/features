@@ -1,0 +1,11 @@
+{
+    "without_apt_source": {
+        "image": "mcr.microsoft.com/devcontainers/base:debian",
+        "remoteUser": "vscode",
+        "features": {
+            "claude-code": {
+                "keepAptSource": false
+            }
+        }
+    }
+}
