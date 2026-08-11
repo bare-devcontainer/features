@@ -46,6 +46,22 @@
                 "// renovate: datasource=(?<datasource>\\S+)( registryUrl=(?<registryUrl>\\S+))? depName=(?<depName>\\S+)( versioning=(?<versioning>\\S+))?( extractVersion=(?<extractVersion>\\S+))?\\s+\"[^\"]+\":\\s*\"(?<currentValue>[^@\"\\s]+)\""
             ],
             "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
+        },
+        {
+            // Tool versions pinned as workflow `env:` entries, which no built-in
+            // manager inspects. Actions themselves are covered by the
+            // github-actions manager and need no comment.
+            "customType": "regex",
+            "managerFilePatterns": [
+                "/^\\.github/workflows/[^/]+\\.ya?ml$/"
+            ],
+            "matchStrings": [
+                // A `# renovate:` comment bound to the quoted value of the YAML
+                // key on the following line,
+                // e.g. DEVCONTAINER_CLI_VERSION: "0.88.0"
+                "# renovate: datasource=(?<datasource>\\S+)( registryUrl=(?<registryUrl>\\S+))? depName=(?<depName>\\S+)( versioning=(?<versioning>\\S+))?( extractVersion=(?<extractVersion>\\S+))?\\s+[A-Za-z0-9_]+:\\s*\"(?<currentValue>[^\"\\s]+)\""
+            ],
+            "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
         }
     ]
 }

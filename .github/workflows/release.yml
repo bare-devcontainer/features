@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  pull_request:
+    paths:
+      - "src/**/devcontainer-feature.json"
+      - "src/**/NOTES.md"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && 'release' || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  release:
+    name: Publish features
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Publish features
+        uses: devcontainers/action@1082abd5d2bf3a11abccba70eef98df068277772 # v1.4.3
+        with:
+          publish-features: "${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}"
+          base-path-to-features: "./src"
+          generate-docs: "true"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate GitHub App Token
+        id: app-token
+        if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.HOUSEKEEPER_CLIENT_ID }}
+          private-key: ${{ secrets.HOUSEKEEPER_PRIVATE_KEY }}
+
+      - name: Create PR for Documentation
+        if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+
+          changed=$(git status --porcelain -- 'src/*/README.md' | awk '{print $2}')
+          if [ -z "$changed" ]; then
+            echo "No documentation changes."
+            exit 0
+          fi
+
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          REPO="${GITHUB_REPOSITORY#*/}"
+          BRANCH="housekeeper/doc-update-${GITHUB_RUN_ID}"
+          MESSAGE="docs: update feature documentation"
+
+          gh api "repos/${OWNER}/${REPO}/git/refs" \
+            --method POST \
+            -F ref="refs/heads/${BRANCH}" \
+            -F sha="${GITHUB_SHA}"
+
+          # The contents API commits as the app, so the checkout needs no
+          # credentials and the commits are signed by GitHub.
+          while IFS= read -r file; do
+            existing_sha=$(gh api "repos/${OWNER}/${REPO}/contents/${file}?ref=${BRANCH}" \
+              --jq '.sha' 2>/dev/null || true)
+            args=(
+              --method PUT
+              -F message="${MESSAGE}"
+              -F content="$(base64 -w0 "$file")"
+              -F branch="${BRANCH}"
+            )
+            [ -n "$existing_sha" ] && args+=(-F sha="$existing_sha")
+            gh api "repos/${OWNER}/${REPO}/contents/${file}" "${args[@]}"
+          done <<< "$changed"
+
+          features=$(echo "$changed" | sed 's|src/\([^/]*\)/README\.md|\1|' | sort -u | sed 's/^/- /')
+
+          gh pr create \
+            --title "${MESSAGE}" \
+            --body "$(printf '## Updated Features\n\n%s' "${features}")" \
+            --head "${BRANCH}" \
+            --base main

@@ -1,0 +1,42 @@
+{
+    "id": "claude-code",
+    "version": "1.1.0",
+    "name": "Claude Code",
+    "documentationURL": "https://github.com/bare-devcontainer/features/tree/main/src/claude-code",
+    "description": "Installs Claude Code, Anthropic's agentic coding CLI, from the official APT repository.",
+    "options": {
+        "version": {
+            "type": "string",
+            "proposals": [
+                "latest"
+            ],
+            "default": "latest",
+            "description": "APT package version of claude-code to install. Use \"latest\" for the newest available version, or an exact version string as reported by `apt-cache policy claude-code`."
+        },
+        "keepAptSource": {
+            "type": "boolean",
+            "default": true,
+            "description": "Keep the Claude Code APT source and signing key in the image so the package can be upgraded later. When false, both are removed after installation."
+        }
+    },
+    "containerEnv": {
+        "CLAUDE_CONFIG_DIR": "/var/lib/claude-code"
+    },
+    "mounts": [
+        {
+            "source": "${devcontainerId}-claude-code-config",
+            "target": "/var/lib/claude-code",
+            "type": "volume"
+        }
+    ],
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ],
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "anthropic.claude-code"
+            ]
+        }
+    }
+}

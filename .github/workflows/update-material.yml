@@ -1,0 +1,90 @@
+name: Update Trusted Material
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/update-material.yml
+      - scripts/update-material.sh
+  schedule:
+    - cron: "0 6 * * 3"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  update:
+    name: Refresh trusted material
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Refresh trusted material
+        id: update
+        run: |
+          set -euo pipefail
+
+          changed="$(bash scripts/update-material.sh)"
+          echo "changed=${changed}" >> "${GITHUB_OUTPUT}"
+
+      - name: Generate GitHub App Token
+        id: app-token
+        if: steps.update.outputs.changed == 'true' && github.event_name != 'pull_request'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.HOUSEKEEPER_CLIENT_ID }}
+          private-key: ${{ secrets.HOUSEKEEPER_PRIVATE_KEY }}
+
+      - name: Create PR for refreshed material
+        if: steps.update.outputs.changed == 'true' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          REPO="${GITHUB_REPOSITORY#*/}"
+          BRANCH="housekeeper/update-material"
+          MESSAGE="chore: update trusted material"
+
+          # A single long-lived branch, so a run that finds the same update
+          # again amends the open pull request instead of opening another one.
+          if ! gh api "repos/${OWNER}/${REPO}/git/ref/heads/${BRANCH}" > /dev/null 2>&1; then
+            gh api "repos/${OWNER}/${REPO}/git/refs" \
+              --method POST \
+              -f ref="refs/heads/${BRANCH}" \
+              -f sha="${GITHUB_SHA}"
+          fi
+
+          # The contents API commits as the app, so the checkout needs no
+          # credentials and the commits are signed by GitHub.
+          while IFS= read -r file; do
+            existing_sha="$(gh api "repos/${OWNER}/${REPO}/contents/${file}?ref=${BRANCH}" \
+              --jq '.sha' 2>/dev/null || true)"
+            args=(
+              --method PUT
+              -F message="${MESSAGE}"
+              -F content="$(base64 -w0 "${file}")"
+              -F branch="${BRANCH}"
+            )
+            if [ -n "${existing_sha}" ]; then
+              args+=(-F sha="${existing_sha}")
+            fi
+            gh api "repos/${OWNER}/${REPO}/contents/${file}" "${args[@]}"
+          done < <(git diff --name-only)
+
+          if [ -z "$(gh pr list --state open --head "${BRANCH}" --json number --jq '.[0]')" ]; then
+            gh pr create \
+              --title "${MESSAGE}" \
+              --body "Automated sync of trusted material." \
+              --head "${BRANCH}" \
+              --base main
+          fi
