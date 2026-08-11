@@ -1,7 +1,8 @@
 {
   "name": "Debian",
-  "build": {
-    "dockerfile": "Dockerfile"
+  "image": "ghcr.io/bare-devcontainer/debian:trixie-20260810@sha256:baee21808301490b53183cfef50a4f13f0b026f18ab3adc440572983307ad956",
+  "features": {
+    "ghcr.io/bare-devcontainer/features/claude-code:1.1.0": {}
   },
   "runArgs": [
     "--cap-drop=ALL"
@@ -12,13 +13,6 @@
   ],
   "remoteUser": "dev",
   "init": true,
-  "mounts": [
-    {
-      "source": "${devcontainerId}-claude-code-cache",
-      "target": "/home/dev/.claude",
-      "type": "volume"
-    }
-  ],
   "remoteEnv": {
     "EDITOR": "code --wait",
     "VISUAL": "code --wait"
