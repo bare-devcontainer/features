@@ -7,6 +7,29 @@
   `keepAptSource` to `false` to drop the source and key once installation
   finishes.
 
+### VS Code extension
+
+The feature also requests the Claude Code VS Code extension, so an editor that
+attaches to the container gets the sidebar, inline diffs and the IDE
+integration alongside the CLI:
+
+```json
+"customizations": {
+    "vscode": {
+        "extensions": [
+            "anthropic.claude-code"
+        ]
+    }
+}
+```
+
+Extension installation is done by the attaching client, not by the install
+script, so this applies to VS Code, Cursor and GitHub Codespaces, and is
+ignored by clients that do not consume `customizations.vscode` (the
+`devcontainer` CLI, or attaching from another editor). The CLI is installed
+either way. Nothing in `devcontainer.json` can remove an extension a feature
+asks for, so uninstall it in the container if it is not wanted.
+
 ### Persisting configuration and credentials
 
 Claude Code keeps its credentials, settings and history in its configuration
