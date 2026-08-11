@@ -1,0 +1,48 @@
+{
+  "name": "Debian",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "runArgs": [
+    "--cap-drop=ALL"
+  ],
+  // Remove "no-new-privileges" if users need to gain elevated privileges inside the container (e.g., su, sudo).
+  "securityOpt": [
+    "no-new-privileges"
+  ],
+  "remoteUser": "dev",
+  "init": true,
+  "mounts": [
+    {
+      "source": "${devcontainerId}-claude-code-cache",
+      "target": "/home/dev/.claude",
+      "type": "volume"
+    }
+  ],
+  "remoteEnv": {
+    "EDITOR": "code --wait",
+    "VISUAL": "code --wait"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // renovate: datasource=github-tags depName=anthropics/claude-code
+        "anthropic.claude-code@2.1.220",
+        // renovate: datasource=github-tags depName=editorconfig/editorconfig-vscode
+        "EditorConfig.EditorConfig@0.18.2"
+      ],
+      "settings": {
+        "json.schemaDownload.trustedDomains": {
+          "https://schemastore.azurewebsites.net/": true,
+          "https://raw.githubusercontent.com/microsoft/vscode/": true,
+          "https://raw.githubusercontent.com/devcontainers/spec/": true,
+          "https://www.schemastore.org/": true,
+          "https://json.schemastore.org/": true,
+          "https://json-schema.org/": true,
+          "https://developer.microsoft.com/json-schemas/": true,
+          "https://docs.renovatebot.com/": true
+        }
+      }
+    }
+  }
+}
