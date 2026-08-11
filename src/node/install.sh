@@ -193,12 +193,32 @@ if [ "${COREPACK}" != "none" ]; then
         exit 1
     fi
 
+    # The global prefix npm installs into comes from the image's npm
+    # configuration, which need not be this installation, so it is spelled out.
     # npm's cache is only of use to this one install, so it is kept with the
     # other downloads instead of in a home directory: the default location is
     # the remote user's own cache when the remote user is root, and may hold
     # entries this feature did not put there in any case.
-    "${PREFIX}/bin/npm" install -g --cache "${tmpdir}/npm-cache" \
+    "${PREFIX}/bin/npm" install -g --prefix "${PREFIX}" --cache "${tmpdir}/npm-cache" \
         --no-audit --no-fund "corepack@${COREPACK}"
+
+    if [ ! -e "${PREFIX}/bin/corepack" ]; then
+        echo "(!) Corepack was not installed into ${PREFIX}." >&2
+        exit 1
+    fi
+
+    # Besides corepack itself, the package declares yarn, yarnpkg, pnpm and pnpx
+    # bins, and npm links every one of them. The distribution ships the corepack
+    # shim alone and leaves the rest to `corepack enable`, so the extra links are
+    # dropped again. Only npm's own are touched, in case the image has a real
+    # package manager of that name.
+    for shim in yarn yarnpkg pnpm pnpx; do
+        shim_path="${PREFIX}/bin/${shim}"
+        [ -L "${shim_path}" ] || continue
+        case "$(readlink "${shim_path}")" in
+            */node_modules/corepack/*) rm -f "${shim_path}" ;;
+        esac
+    done
 
     # Corepack downloads package managers into COREPACK_HOME, which defaults to
     # ~/.cache/node/corepack. Creating it here keeps the first invocation from

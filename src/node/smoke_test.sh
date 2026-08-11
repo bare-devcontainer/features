@@ -42,7 +42,13 @@ check "corepack reports a version" corepack --version
 check "npm and npx are removed by default" \
     bash -c '! command -v npm >/dev/null 2>&1 && ! command -v npx >/dev/null 2>&1'
 check "corepack is installed but not enabled" \
-    bash -c '! command -v yarn >/dev/null 2>&1 && ! command -v pnpm >/dev/null 2>&1'
+    bash -c 'for shim in yarn yarnpkg pnpm pnpx; do
+                 path="$(command -v "${shim}" 2>/dev/null || true)"
+                 if [ -n "${path}" ]; then
+                     echo "${shim} is on PATH at ${path}"
+                     exit 1
+                 fi
+             done'
 check "corepack cache directory is writable by the remote user" \
     bash -c 'touch "${HOME}/.cache/node/corepack/.write-test"
              rm "${HOME}/.cache/node/corepack/.write-test"'
