@@ -1,0 +1,37 @@
+{
+    "id": "node",
+    "version": "1.0.0",
+    "name": "Node.js",
+    "documentationURL": "https://github.com/bare-devcontainer/features/tree/main/src/node",
+    "description": "Installs Node.js from nodejs.org, verified against the Node.js release signing keys, with Corepack in place of npm.",
+    "options": {
+        "version": {
+            "type": "string",
+            "proposals": [
+                "lts",
+                "latest",
+                "26",
+                "24"
+            ],
+            "default": "lts",
+            "description": "Node.js version to install. Use \"lts\" for the newest long-term support release, \"latest\" for the newest release of any line, a release line such as \"24\" or \"24.19\", or an exact version such as \"24.19.0\"."
+        },
+        "corepack": {
+            "type": "string",
+            "proposals": [
+                "latest",
+                "none"
+            ],
+            "default": "latest",
+            "description": "npm version specifier of Corepack to install globally, or \"none\" to leave Corepack out."
+        },
+        "keepNpm": {
+            "type": "boolean",
+            "default": false,
+            "description": "Keep the npm and npx executables that ship with the Node.js distribution. When false, both are removed so the package manager comes from the project's \"packageManager\" field through Corepack."
+        }
+    },
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
+}

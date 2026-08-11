@@ -14,6 +14,10 @@ MATERIALS='[
   {
     "path": "src/claude-code/claude-code.asc",
     "url": "https://downloads.claude.ai/keys/claude-code.asc"
+  },
+  {
+    "path": "src/node/node-keyring.kbx",
+    "url": "https://github.com/nodejs/release-keys/raw/HEAD/gpg/pubring.kbx"
   }
 ]'
 
