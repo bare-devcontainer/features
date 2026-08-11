@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Installs the Claude Code CLI from Anthropic's official APT repository and
-# prepares the remote user's configuration directory (~/.claude).
+# prepares the configuration directory the feature points CLAUDE_CONFIG_DIR at.
 #
 # Expected environment variables, from this feature's own options:
 #
@@ -37,21 +37,18 @@ fi
 
 export DEBIAN_FRONTEND=noninteractive
 
-# The APT repository is served over HTTPS, which fails on minimal images that
-# ship without a CA bundle.
+# Ensure the system has a CA bundle for HTTPS access to the APT repository.
 if [ ! -e /etc/ssl/certs/ca-certificates.crt ]; then
     apt-get update -y
     apt-get install -y --no-install-recommends ca-certificates
 fi
 
-# The signing key is vendored with the feature so installation does not depend
-# on fetching a key over the network at build time.
-install -m 0644 "${FEATURE_DIR}/claude-code.asc" "${APT_KEYRING}"
+# Add the official Claude Code apt repository.
+install -D -m 0644 "${FEATURE_DIR}/claude-code.asc" "${APT_KEYRING}"
 echo "deb [signed-by=${APT_KEYRING}] ${APT_REPOSITORY}" > "${APT_SOURCE}"
-
-# Index the source added above.
 apt-get update -y
 
+# Install the requested version of the package, or the latest if none was specified.
 if [ "${VERSION}" = "latest" ] || [ -z "${VERSION}" ]; then
     package="claude-code"
 else
@@ -65,44 +62,33 @@ fi
 
 rm -rf /var/lib/apt/lists/*
 
-# Claude Code stores credentials, settings and history under ~/.claude. The
-# feature mounts a volume at CONFIG_DIR and ~/.claude is linked to it, so the
-# configuration survives rebuilds. The volume target cannot depend on the remote
-# user's home directory (feature mounts are static), hence the indirection.
 USERNAME="${_REMOTE_USER:-root}"
 CONFIG_DIR="/var/lib/claude-code"
+CONFIG_GROUP="claude-code"
 
-# Both the ownership applied below and the home directory lookup need the
-# account to exist. Resolve it once and report a missing account here, since
-# under `set -e` a failing getent/id would otherwise abort the script with a
-# bare non-zero status.
 if ! passwd_entry="$(getent passwd "${USERNAME}")"; then
     echo "(!) Remote user '${USERNAME}' was not found in the password database." >&2
     exit 1
 fi
 
-# The password database is only consulted as a fallback: the CLI-provided home
-# directory wins when it is set.
-USER_HOME="${_REMOTE_USER_HOME:-$(printf '%s' "${passwd_entry}" | cut -d: -f6)}"
-USER_GROUP="$(id -gn "${USERNAME}")"
-
-# A named volume is seeded from the image on first use, so creating the
-# directory with the right ownership here also makes the volume itself owned by
-# the remote user.
+# Create a dedicated group for the configuration directory, and add the remote user to it.
+# This allows the remote user to access the configuration directory even if the remote user's UID is renumbered by `updateRemoteUserUID` option.
 mkdir -p "${CONFIG_DIR}"
-chown "${USERNAME}:${USER_GROUP}" "${CONFIG_DIR}"
-
-if [ -n "${USER_HOME}" ]; then
-    config_link="${USER_HOME}/.claude"
-    if [ -d "${config_link}" ] && [ ! -L "${config_link}" ]; then
-        # Preserve whatever the base image or an earlier feature put there.
-        cp -a "${config_link}/." "${CONFIG_DIR}/"
-        rm -rf "${config_link}"
-    else
-        rm -f "${config_link}"
-    fi
-    ln -s "${CONFIG_DIR}" "${config_link}"
-    chown -h "${USERNAME}:${USER_GROUP}" "${config_link}"
+if ! getent group "${CONFIG_GROUP}" >/dev/null; then
+    groupadd --system "${CONFIG_GROUP}"
 fi
+usermod -aG "${CONFIG_GROUP}" "${USERNAME}"
+
+# Transfer any existing configuration from the remote user's home directory to the mounted volume if it exists.
+USER_HOME="${_REMOTE_USER_HOME:-$(printf '%s' "${passwd_entry}" | cut -d: -f6)}"
+if [ -n "${USER_HOME}" ] && [ -d "${USER_HOME}/.claude" ] && [ -z "$(ls -A "${CONFIG_DIR}")" ]; then
+    cp -a "${USER_HOME}/.claude/." "${CONFIG_DIR}/"
+fi
+
+# Set the ownership and permissions of the configuration directory.
+# The setgid bit keeps entries created later in the shared group.
+chown -R "${USERNAME}:${CONFIG_GROUP}" "${CONFIG_DIR}"
+chmod -R g+rwX "${CONFIG_DIR}"
+chmod 2775 "${CONFIG_DIR}"
 
 echo "Installed $(claude --version 2>/dev/null || echo 'claude-code')."

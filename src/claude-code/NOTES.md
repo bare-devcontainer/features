@@ -1,23 +1,3 @@
-
-# Claude Code (claude-code)
-
-Installs Claude Code, Anthropic's agentic coding CLI, from the official APT repository.
-
-## Example Usage
-
-```json
-"features": {
-    "ghcr.io/bare-devcontainer/features/claude-code:1": {}
-}
-```
-
-## Options
-
-| Options Id | Description | Type | Default Value |
-|-----|-----|-----|-----|
-| version | APT package version of claude-code to install. Use "latest" for the newest available version, or an exact version string as reported by `apt-cache policy claude-code`. | string | latest |
-| keepAptSource | Keep the Claude Code APT source and signing key in the image so the package can be upgraded later. When false, both are removed after installation. | boolean | true |
-
 ## Details
 
 - Requires a Debian or Ubuntu based image.
@@ -80,8 +60,3 @@ The volume is per dev container (`${devcontainerId}`) and is not shared between
 projects. Mounts declared by a feature cannot be disabled from
 `devcontainer.json`, but overriding `CLAUDE_CONFIG_DIR` as shown above leaves the
 volume mounted and unused.
-
-
----
-
-_Note: This file was auto-generated from the [devcontainer-feature.json](https://github.com/bare-devcontainer/features/blob/main/src/claude-code/devcontainer-feature.json).  Add additional notes to a `NOTES.md`._

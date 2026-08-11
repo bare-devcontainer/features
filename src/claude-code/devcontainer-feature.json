@@ -19,6 +19,9 @@
             "description": "Keep the Claude Code APT source and signing key in the image so the package can be upgraded later. When false, both are removed after installation."
         }
     },
+    "containerEnv": {
+        "CLAUDE_CONFIG_DIR": "/var/lib/claude-code"
+    },
     "mounts": [
         {
             "source": "${devcontainerId}-claude-code-config",

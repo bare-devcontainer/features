@@ -1,8 +1,4 @@
-name: Smoke Test
-
-# Starts a real Dev Container per feature and base image combination, with the
-# feature added at its default options, and runs the feature's smoke_test.sh
-# inside it as the remote user.
+name: CI
 
 on:
   push:
@@ -52,7 +48,7 @@ jobs:
           echo "Discovered features: ${features}"
 
   smoke-test:
-    name: ${{ matrix.feature }} on ${{ matrix.image }}
+    name: ${{ matrix.feature }} on ${{ matrix.image.label }}
     needs: discover
     runs-on: ubuntu-latest
     permissions:
@@ -61,16 +57,14 @@ jobs:
       fail-fast: false
       matrix:
         feature: ${{ fromJSON(needs.discover.outputs.features) }}
-        # Deliberately floating tags: features have to keep working against the
-        # base images users actually pull today, not a digest frozen at merge
-        # time. Renovate therefore does not pin these.
         image:
-          - mcr.microsoft.com/devcontainers/base:debian
-          - ghcr.io/bare-devcontainer/debian:trixie
+          - ref: mcr.microsoft.com/devcontainers/base:debian
+            label: mcr/base:debian
+          - ref: ghcr.io/bare-devcontainer/debian:trixie
+            label: bare/debian:trixie
     env:
       FEATURE: ${{ matrix.feature }}
-      IMAGE: ${{ matrix.image }}
-      WORKSPACE: ${{ runner.temp }}/smoke
+      IMAGE: ${{ matrix.image.ref }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -80,6 +74,8 @@ jobs:
         run: npm install --global "@devcontainers/cli@${DEVCONTAINER_CLI_VERSION}"
 
       - name: Assemble the test workspace
+        env:
+          WORKSPACE: ${{ runner.temp }}/smoke
         run: |
           set -euo pipefail
 
@@ -113,9 +109,13 @@ jobs:
           jq . "${WORKSPACE}/.devcontainer/devcontainer.json"
 
       - name: Start the Dev Container
+        env:
+          WORKSPACE: ${{ runner.temp }}/smoke
         run: devcontainer up --workspace-folder "${WORKSPACE}" --remove-existing-container
 
       - name: Run smoke_test.sh
+        env:
+          WORKSPACE: ${{ runner.temp }}/smoke
         run: |
           devcontainer exec --workspace-folder "${WORKSPACE}" \
             bash "/workspaces/smoke/.devcontainer/${FEATURE}/smoke_test.sh"
