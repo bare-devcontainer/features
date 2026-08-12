@@ -1,40 +1,51 @@
-## Details
+## Requirements
 
-- Requires a Debian or Ubuntu based image.
-- The repository signing key is vendored with the feature and installed to
-  `/usr/share/keyrings/claude-code.asc`, so no key is downloaded at build time.
-- The APT source is written to `/etc/apt/sources.list.d/claude-code.list`. Set
-  `keepAptSource` to `false` to drop the source and key once installation
-  finishes.
+- A Debian or Ubuntu based image: the package is installed with `apt-get`, and the
+  install script stops early on an image without it.
 
-### VS Code extension
+## Usage
 
-The feature also requests the Claude Code VS Code extension, so an editor that
-attaches to the container gets the sidebar, inline diffs and the IDE
-integration alongside the CLI:
+The defaults install the newest package and leave the APT source in place. To drop
+the source and its key once the package is installed:
+
+```json
+"features": {
+    "ghcr.io/bare-devcontainer/features/claude-code:1": {
+        "keepAptSource": false
+    }
+}
+```
+
+`version` takes an APT package version rather than a release name, so read the exact
+string off `apt-cache policy claude-code` in a container that has the source
+configured before pinning to one.
+
+## Installed software
+
+- The `claude` CLI, from Anthropic's APT repository at
+  `https://downloads.claude.ai/claude-code/apt/stable`. The source is written to
+  `/etc/apt/sources.list.d/claude-code.list` and the signing key to
+  `/usr/share/keyrings/claude-code.asc`.
+- The Claude Code VS Code extension (`anthropic.claude-code`), installed by clients
+  that read `customizations.vscode`.
+
+To leave the extension out, list it with a minus sign in `devcontainer.json`:
 
 ```json
 "customizations": {
     "vscode": {
         "extensions": [
-            "anthropic.claude-code"
+            "-anthropic.claude-code"
         ]
     }
 }
 ```
 
-Extension installation is done by the attaching client, not by the install
-script, so this applies to VS Code, Cursor and GitHub Codespaces, and is
-ignored by clients that do not consume `customizations.vscode` (the
-`devcontainer` CLI, or attaching from another editor). The CLI is installed
-either way. Nothing in `devcontainer.json` can remove an extension a feature
-asks for, so uninstall it in the container if it is not wanted.
-
-### Persisting configuration and credentials
+## Configuration and credentials
 
 Claude Code keeps its credentials, settings and history in its configuration
-directory. The feature declares a volume mount so those survive container
-rebuilds, and points Claude Code at it:
+directory. The feature declares a volume mount so those survive container rebuilds,
+and points Claude Code at it:
 
 ```json
 "containerEnv": {
@@ -83,3 +94,33 @@ The volume is per dev container (`${devcontainerId}`) and is not shared between
 projects. Mounts declared by a feature cannot be disabled from
 `devcontainer.json`, but overriding `CLAUDE_CONFIG_DIR` as shown above leaves the
 volume mounted and unused.
+
+## Supply chain
+
+The package is installed by APT from Anthropic's official repository, and its
+signature is checked against the repository signing key. That key is vendored with
+the feature and installed from the feature directory to
+`/usr/share/keyrings/claude-code.asc`, so nothing is trusted that was not reviewed
+in this repository — no key is downloaded at build time. It is refreshed by this
+repository's `Update Trusted Material` workflow, which opens a pull request when
+upstream publishes a different key.
+
+To see the key before pinning the feature:
+
+```sh
+gpg --show-keys src/claude-code/claude-code.asc
+```
+
+`keepAptSource` decides what is left behind. Keeping the source and key, the
+default, means `apt-get upgrade` inside the container can pick up newer releases.
+Setting it to `false` removes both once the install finishes, so the image carries
+no additional APT source. Either way the apt lists downloaded during installation
+are deleted.
+
+## Tips
+
+- For the tags this feature is published under, see
+  [Versions and pinning](https://github.com/bare-devcontainer/features#versions-and-pinning).
+- The configuration volume is per dev container, so authentication is done once per
+  project. Point `CLAUDE_CONFIG_DIR` at a mount of your own to share credentials
+  between projects.
