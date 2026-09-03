@@ -15,7 +15,7 @@ concurrency:
 
 env:
   # renovate: datasource=npm depName=@devcontainers/cli
-  DEVCONTAINER_CLI_VERSION: "0.88.0"
+  DEVCONTAINER_CLI_VERSION: "0.89.0"
 
 jobs:
   discover:
