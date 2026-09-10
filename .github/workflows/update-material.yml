@@ -15,6 +15,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# The runner's default shell adds only -e, so an unset variable or a failure
+# mid-pipeline would otherwise pass silently.
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
 jobs:
   update:
     name: Refresh trusted material
@@ -30,8 +36,6 @@ jobs:
       - name: Refresh trusted material
         id: update
         run: |
-          set -euo pipefail
-
           changed="$(bash scripts/update-material.sh)"
           echo "changed=${changed}" >> "${GITHUB_OUTPUT}"
 
@@ -48,8 +52,6 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          set -euo pipefail
-
           OWNER="${GITHUB_REPOSITORY_OWNER}"
           REPO="${GITHUB_REPOSITORY#*/}"
           BRANCH="housekeeper/update-material"
