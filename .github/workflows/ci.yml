@@ -17,6 +17,12 @@ env:
   # renovate: datasource=npm depName=@devcontainers/cli
   DEVCONTAINER_CLI_VERSION: "0.89.0"
 
+# The runner's default shell adds only -e, so an unset variable or a failure
+# mid-pipeline would otherwise pass silently.
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
 jobs:
   discover:
     name: Discover features
@@ -33,7 +39,6 @@ jobs:
       - name: List features under src/
         id: discover
         run: |
-          set -euo pipefail
           features="$(find src -mindepth 2 -maxdepth 2 -name devcontainer-feature.json -printf '%h\n' \
             | xargs -r -n1 basename \
             | sort \
@@ -77,8 +82,6 @@ jobs:
         env:
           WORKSPACE: ${{ runner.temp }}/smoke
         run: |
-          set -euo pipefail
-
           if [ ! -f "src/${FEATURE}/smoke_test.sh" ]; then
             echo "::error::src/${FEATURE}/smoke_test.sh is missing; every feature must ship one."
             exit 1

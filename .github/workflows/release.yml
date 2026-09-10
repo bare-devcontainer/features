@@ -14,6 +14,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && 'release' || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# The runner's default shell adds only -e, so an unset variable or a failure
+# mid-pipeline would otherwise pass silently.
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
 jobs:
   release:
     name: Publish features
@@ -49,8 +55,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          set -euo pipefail
-
           changed=$(git status --porcelain -- 'src/*/README.md' | awk '{print $2}')
           if [ -z "$changed" ]; then
             echo "No documentation changes."
