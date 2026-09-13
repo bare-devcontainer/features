@@ -1,6 +1,6 @@
 {
   "name": "Debian",
-  "image": "ghcr.io/bare-devcontainer/debian:trixie-20260810@sha256:baee21808301490b53183cfef50a4f13f0b026f18ab3adc440572983307ad956",
+  "image": "ghcr.io/bare-devcontainer/debian:trixie-20260913@sha256:e2fee1e8cd530042d38ab22bdf44f79e7c14fc0a07e010cc99a927b4f25b3e9a",
   "features": {
     "ghcr.io/bare-devcontainer/features/claude-code:1.1.0": {}
   },
@@ -17,6 +17,14 @@
     "EDITOR": "code --wait",
     "VISUAL": "code --wait"
   },
+  "mounts": [
+    // Persist the shell history the image keeps in this directory.
+    {
+      "source": "${devcontainerId}-bash-history",
+      "target": "/home/dev/.local/state/bash",
+      "type": "volume"
+    }
+  ],
   "customizations": {
     "vscode": {
       "extensions": [
