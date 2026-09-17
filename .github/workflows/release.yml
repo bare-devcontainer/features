@@ -9,6 +9,7 @@ on:
   workflow_dispatch:
 
 permissions: {}
+cache-mode: none
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && 'release' || github.ref }}
