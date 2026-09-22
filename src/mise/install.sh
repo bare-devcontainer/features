@@ -16,9 +16,7 @@ FEATURE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SHASUMS="${FEATURE_DIR}/SHASUMS256.txt"
 PREFIX="/usr/local"
 RELEASES_URL="https://github.com/jdx/mise/releases"
-# Coupled to PATH in devcontainer-feature.json: a fixed path is the only kind
-# containerEnv can name, and it resolves to mise's data directory through a
-# symlink.
+# Coupled to PATH in devcontainer-feature.json.
 SHIMS_PARENT="/usr/local/share/mise"
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -69,9 +67,8 @@ install_prerequisites() {
         exit 1
     fi
 
-    # An image that ships package lists means them to be there, and this script
-    # runs after it was built, so only lists its own apt-get update fetched are
-    # removed. "lock" and "partial" are left by a cleaned image and do not count.
+    # Only the lists this script's apt-get update fetched are removed; an image
+    # that ships its own means them to be kept. "lock" and "partial" do not count.
     local lists_shipped=false
     if find /var/lib/apt/lists -maxdepth 1 -type f ! -name lock -print -quit 2>/dev/null \
         | grep -q .; then
@@ -173,11 +170,9 @@ fi
 home="${_REMOTE_USER_HOME:-$(getent passwd "${username}" | cut -d: -f6)}"
 group="$(id -gn "${username}")"
 
-# mise's own defaults, created here rather than left to mise so that a volume
-# mounted over either is seeded with the remote user's ownership instead of
-# root's. The levels above them are listed too: ~/.local and ~/.cache are shared
-# with the rest of the account, so one left owned by root would lock the user
-# out of directories this feature has nothing to do with.
+# Created rather than left to mise, so a volume mounted over one is seeded with
+# this owner. The parents are listed too, or root keeps the rest of ~/.local
+# and ~/.cache.
 install -d -o "${username}" -g "${group}" \
     "${home}/.local" "${home}/.local/share" "${home}/.local/share/mise" \
     "${home}/.cache" "${home}/.cache/mise"
