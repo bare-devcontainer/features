@@ -1,0 +1,9 @@
+[
+  {
+    "feature": "mise",
+    "repository": "jdx/mise",
+    "checksums": "src/mise/SHASUMS256.txt",
+    "signature": "src/mise/SHASUMS256.txt.minisig",
+    "key": "src/mise/mise-minisign.pub"
+  }
+]

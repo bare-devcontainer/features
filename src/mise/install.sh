@@ -1,28 +1,32 @@
 #!/usr/bin/env bash
 #
-# Installs mise into /usr/local/bin from the official GitHub release, mirroring
-# the setup of the ghcr.io/bare-devcontainer/mise image: the release binary is
-# checked against SHASUMS256.txt, whose minisign signature is verified with the
-# vendored mise public key. The directories mise installs tools into and caches
-# downloads in are prepared for the remote user, at the paths the feature
-# mounts volumes on and points MISE_DATA_DIR and MISE_CACHE_DIR at.
+# Installs mise into /usr/local/bin from the official GitHub release. Both the
+# version to install and the checksum to expect come from SHASUMS256.txt,
+# vendored with the feature, so the download is verified with sha256sum alone
+# and no signature tooling is installed into the container to check it.
 #
-# Expected environment variables, from this feature's own options:
+# That file's authenticity is established in this repository rather than at
+# install time: it is upstream's own checksum file, committed together with the
+# minisign signature upstream published for it, and scripts/verify-material.sh
+# checks the two against the vendored mise public key on every change.
 #
-#   VERSION            mise version to install: "latest", or an exact version
-#                      such as "2026.9.10".
+# The directories mise installs tools into and caches downloads in are prepared
+# for the remote user, at the paths the feature mounts volumes on and points
+# MISE_DATA_DIR and MISE_CACHE_DIR at.
 #
-# and from the Dev Container specification, injected by the CLI:
+# This feature has no options: the vendored checksums cover one mise release,
+# so the feature's own version is what selects which mise gets installed.
+#
+# Expected environment variables, from the Dev Container specification,
+# injected by the CLI:
 #
 #   _REMOTE_USER       The account the container is attached as, and therefore
 #                      the one mise installs tools as.
 
 set -euo pipefail
 
-VERSION="${VERSION:-latest}"
-
 FEATURE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PUBLIC_KEY="${FEATURE_DIR}/mise-minisign.pub"
+SHASUMS="${FEATURE_DIR}/SHASUMS256.txt"
 PREFIX="/usr/local"
 RELEASES_URL="https://github.com/jdx/mise/releases"
 # Coupled to containerEnv and mounts in devcontainer-feature.json.
@@ -35,6 +39,11 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+if [ ! -f "${SHASUMS}" ]; then
+    echo "(!) ${SHASUMS} is missing; the feature cannot verify a download without it." >&2
+    exit 1
+fi
+
 # Every download lands here, so nothing the install fetches is left in the
 # image, whichever path the script exits by.
 tmpdir="$(mktemp -d)"
@@ -44,7 +53,6 @@ trap 'rm -rf "${tmpdir}"' EXIT
 package_for() {
     case "$1" in
         wget) echo "wget" ;;
-        minisign) echo "minisign" ;;
         sha256sum) echo "coreutils" ;;
         *) echo "$1" ;;
     esac
@@ -52,7 +60,7 @@ package_for() {
 
 # Installs whatever the base image is missing, and nothing it already has.
 install_prerequisites() {
-    local required=(minisign sha256sum) missing=() cmd
+    local required=(sha256sum) missing=() cmd
 
     # Either downloader will do, so one is only pulled in when neither is there.
     if ! command -v curl >/dev/null 2>&1; then
@@ -95,45 +103,23 @@ download() {
     fi
 }
 
-# Prints the Location header a URL redirects to, without following it.
-redirect_target() {
-    local url="$1"
+# Reads the release to install out of the vendored checksums, which are the
+# only place it is recorded: every entry names the release it belongs to, so
+# the version cannot drift from the checksums the download is verified against.
+pinned_version() {
+    local versions count
 
-    if command -v wget >/dev/null 2>&1; then
-        # wget treats the redirect it was told not to follow as a failure, but
-        # has printed the response headers by then.
-        (wget -q -T 30 -t 3 --max-redirect=0 -S -O /dev/null "${url}" 2>&1 || true) \
-            | sed -n 's/^ *Location: *//p' | head -n1
-    else
-        curl -fsSI --connect-timeout 30 --retry 3 -o /dev/null -w '%{redirect_url}' "${url}"
-    fi
-}
+    versions="$(grep -oE 'mise-v[0-9]{4}\.[0-9]+\.[0-9]+-' "${SHASUMS}" \
+        | sed 's/^mise-//; s/-$//' \
+        | sort -u)"
+    count="$(printf '%s' "${versions}" | grep -c . || true)"
 
-# Turns the requested version into the exact "vYYYY.M.N" the release is
-# published under. "latest" is resolved through the redirect GitHub serves for
-# a repository's latest release, which lands on that release's tag page.
-resolve_version() {
-    local requested="${1#v}" location resolved
-
-    if [[ "${requested}" =~ ^[0-9]{4}\.[0-9]+\.[0-9]+$ ]]; then
-        echo "v${requested}"
-        return
-    fi
-
-    if [ "${requested}" != "latest" ]; then
-        echo "(!) Unrecognised version '$1'. Use \"latest\" or an exact version such as \"2026.9.10\"." >&2
+    if [ "${count}" -ne 1 ]; then
+        echo "(!) ${SHASUMS} names ${count} mise versions; expected exactly one." >&2
         exit 1
     fi
 
-    location="$(redirect_target "${RELEASES_URL}/latest")"
-    resolved="${location##*/tag/}"
-
-    if [ -z "${location}" ] || [[ ! "${resolved}" =~ ^v[0-9]{4}\.[0-9]+\.[0-9]+$ ]]; then
-        echo "(!) Could not resolve the latest mise release from ${RELEASES_URL}/latest (got '${location}')." >&2
-        exit 1
-    fi
-
-    echo "${resolved}"
+    printf '%s\n' "${versions}"
 }
 
 mise_arch() {
@@ -147,18 +133,23 @@ mise_arch() {
     esac
 }
 
-# Downloads the named release binary, checks it against the verified
-# SHASUMS256.txt and installs it as ${PREFIX}/bin/mise.
+# Downloads the named release binary, checks it against the vendored checksums
+# and installs it as ${PREFIX}/bin/mise.
 install_binary() {
-    local binary="$1"
+    local binary="$1" expected
+
+    # Looked up before downloading, so a binary the vendored checksums do not
+    # cover fails without fetching anything. Entries read "<sum>  ./<name>", and
+    # the name is compared as a string so the dots in a version cannot act as
+    # wildcards and match a neighbouring release.
+    expected="$(awk -v name="./${binary}" '$2 == name { print $1 }' "${SHASUMS}")"
+    if [ -z "${expected}" ]; then
+        echo "(!) ${SHASUMS} has no checksum for ${binary}." >&2
+        exit 1
+    fi
 
     download "${RELEASES_URL}/download/${mise_version}/${binary}" "${tmpdir}/${binary}"
-
-    # SHASUMS256.txt names each file as ./<name>, so the entry is rewritten to
-    # point at the copy just downloaded.
-    grep "  \\./${binary}\$" "${tmpdir}/SHASUMS256.txt" \
-        | sed "s|  \\./${binary}\$|  ${tmpdir}/${binary}|" \
-        | sha256sum -c -
+    printf '%s  %s\n' "${expected}" "${tmpdir}/${binary}" | sha256sum -c -
 
     install -m 755 "${tmpdir}/${binary}" "${PREFIX}/bin/mise"
 }
@@ -176,22 +167,15 @@ mise_runs() {
 
 install_prerequisites
 
-mise_version="$(resolve_version "${VERSION}")"
+mise_version="$(pinned_version)"
 arch="$(mise_arch)"
 
 echo "Installing mise ${mise_version} (linux-${arch}) into ${PREFIX}/bin..."
-download "${RELEASES_URL}/download/${mise_version}/SHASUMS256.txt" "${tmpdir}/SHASUMS256.txt"
-download "${RELEASES_URL}/download/${mise_version}/SHASUMS256.txt.minisig" "${tmpdir}/SHASUMS256.txt.minisig"
-
-# The checksums are signed with mise's minisign key. The public key is vendored
-# with the feature, so the signature is checked against the key reviewed in
-# this repository rather than one fetched at install time.
-minisign -V -m "${tmpdir}/SHASUMS256.txt" -p "${PUBLIC_KEY}"
 
 # The glibc build is what upstream's installer picks on a glibc image, but a
 # release can require a newer glibc than the image provides, in which case it
 # fails to start at all. The statically linked musl build runs on any image, so
-# it is installed in that case, verified against the same signed checksums.
+# it is installed in that case, verified against the same vendored checksums.
 install_binary "mise-${mise_version}-linux-${arch}"
 if ! output="$(mise_runs 2>&1)"; then
     echo "(*) The glibc build of mise ${mise_version} does not run on this image; installing the musl build instead." >&2

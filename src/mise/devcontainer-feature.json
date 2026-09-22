@@ -3,17 +3,7 @@
     "version": "1.0.0",
     "name": "mise",
     "documentationURL": "https://github.com/bare-devcontainer/features/tree/main/src/mise",
-    "description": "Installs mise, the polyglot tool and runtime manager, from its GitHub release, verified against the mise minisign key, with its tool installs and download cache kept on volumes.",
-    "options": {
-        "version": {
-            "type": "string",
-            "proposals": [
-                "latest"
-            ],
-            "default": "latest",
-            "description": "mise version to install. Use \"latest\" for the newest release, or an exact version such as \"2026.9.10\"."
-        }
-    },
+    "description": "Installs mise, the polyglot tool and runtime manager, from its GitHub release, verified against checksums committed to this repository, with its tool installs and download cache kept on volumes.",
     "containerEnv": {
         "MISE_DATA_DIR": "/var/lib/mise",
         "MISE_CACHE_DIR": "/var/cache/mise",
