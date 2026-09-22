@@ -16,11 +16,9 @@ FEATURE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SHASUMS="${FEATURE_DIR}/SHASUMS256.txt"
 PREFIX="/usr/local"
 RELEASES_URL="https://github.com/jdx/mise/releases"
-# mise's own defaults, relative to the remote user's home directory.
-DATA_DIR=".local/share/mise"
-CACHE_DIR=".cache/mise"
 # Coupled to PATH in devcontainer-feature.json: a fixed path is the only kind
-# containerEnv can name, and it resolves to DATA_DIR through a symlink.
+# containerEnv can name, and it resolves to mise's data directory through a
+# symlink.
 SHIMS_PARENT="/usr/local/share/mise"
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -175,20 +173,15 @@ fi
 home="${_REMOTE_USER_HOME:-$(getent passwd "${username}" | cut -d: -f6)}"
 group="$(id -gn "${username}")"
 
-# Created here rather than left to mise so that a volume mounted over either of
-# them is seeded with the remote user's ownership instead of root's. Every level
-# is handed over, not just the last: ~/.local and ~/.cache are shared with the
-# rest of the account, and one left owned by root would lock the user out of
-# directories this feature has nothing to do with.
-for dir in "${DATA_DIR}" "${CACHE_DIR}"; do
-    mkdir -p "${home}/${dir}"
-    while [ "${dir}" != "." ]; do
-        chown "${username}:${group}" "${home}/${dir}"
-        dir="$(dirname "${dir}")"
-    done
-done
+# mise's own defaults, created here rather than left to mise so that a volume
+# mounted over either is seeded with the remote user's ownership instead of
+# root's. The levels above them are listed too: ~/.local and ~/.cache are shared
+# with the rest of the account, so one left owned by root would lock the user
+# out of directories this feature has nothing to do with.
+install -d -o "${username}" -g "${group}" \
+    "${home}/.local" "${home}/.local/share" "${home}/.local/share/mise" \
+    "${home}/.cache" "${home}/.cache/mise"
 
-mkdir -p "$(dirname "${SHIMS_PARENT}")"
-ln -sfn "${home}/${DATA_DIR}" "${SHIMS_PARENT}"
+ln -sfn "${home}/.local/share/mise" "${SHIMS_PARENT}"
 
 echo "Installed mise $("${PREFIX}/bin/mise" --version)."
