@@ -2,13 +2,11 @@
 #
 # verify-material.sh — check that the release checksums a feature's install
 # script verifies downloads against are the ones upstream signed. Reads the
-# working tree only: it downloads nothing, writes nothing and needs no network,
-# so what it proves holds for whatever the repository currently has committed.
-# Exits non-zero on the first file that does not verify.
+# working tree only, so it needs no network. Exits non-zero on the first file
+# that does not verify.
 #
-# The features it covers, and the signature and key for each, are listed in
-# signed-material.json next to this script; pin-checksums.sh writes the files
-# this reads.
+# The files covered, per feature, are listed in signed-material.json next to
+# this script; pin-checksums.sh writes them.
 #
 # Requires: minisign, jq
 #

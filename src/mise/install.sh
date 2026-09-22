@@ -1,21 +1,12 @@
 #!/usr/bin/env bash
 #
-# Installs mise into /usr/local/bin from the official GitHub release. Both the
-# version to install and the checksum to expect come from SHASUMS256.txt,
-# vendored with the feature, so the download is verified with sha256sum alone
-# and no signature tooling is installed into the container to check it.
-#
-# That file's authenticity is established in this repository rather than at
-# install time: it is upstream's own checksum file, committed together with the
-# minisign signature upstream published for it, and scripts/verify-material.sh
-# checks the two against the vendored mise public key on every change.
+# Installs mise into /usr/local/bin from the official GitHub release. The
+# release to install and the checksum to expect both come from SHASUMS256.txt,
+# vendored with the feature; scripts/verify-material.sh checks its signature.
 #
 # The directories mise installs tools into and caches downloads in are prepared
 # for the remote user, at the paths the feature mounts volumes on and points
 # MISE_DATA_DIR and MISE_CACHE_DIR at.
-#
-# This feature has no options: the vendored checksums cover one mise release,
-# so the feature's own version is what selects which mise gets installed.
 #
 # Expected environment variables, from the Dev Container specification,
 # injected by the CLI:
@@ -103,9 +94,8 @@ download() {
     fi
 }
 
-# Reads the release to install out of the vendored checksums, which are the
-# only place it is recorded: every entry names the release it belongs to, so
-# the version cannot drift from the checksums the download is verified against.
+# Reads the release to install out of the vendored checksums, the only place it
+# is recorded.
 pinned_version() {
     local versions count
 
@@ -138,10 +128,8 @@ mise_arch() {
 install_binary() {
     local binary="$1" expected
 
-    # Looked up before downloading, so a binary the vendored checksums do not
-    # cover fails without fetching anything. Entries read "<sum>  ./<name>", and
-    # the name is compared as a string so the dots in a version cannot act as
-    # wildcards and match a neighbouring release.
+    # Entries read "<sum>  ./<name>". The name is compared as a string so the
+    # dots in a version cannot act as wildcards and match a neighbouring release.
     expected="$(awk -v name="./${binary}" '$2 == name { print $1 }' "${SHASUMS}")"
     if [ -z "${expected}" ]; then
         echo "(!) ${SHASUMS} has no checksum for ${binary}." >&2
@@ -172,12 +160,9 @@ arch="$(mise_arch)"
 
 echo "Installing mise ${mise_version} (linux-${arch}-musl) into ${PREFIX}/bin..."
 
-# The statically linked musl build, not the glibc build upstream's installer
-# picks on a glibc host. It runs whatever the image's glibc version is, and it
-# starts an order of magnitude faster, which the shims on PATH pay on every
-# tool invocation because each one re-execs this binary. The libc mise installs
-# *tools* for is detected from the image rather than from this build, so the
-# choice stops at mise itself.
+# The musl build is statically linked, so it neither depends on the image's
+# glibc nor pays dynamic relocation at startup — a cost the shims on PATH would
+# carry on every tool invocation, since each one re-execs this binary.
 install_binary "mise-${mise_version}-linux-${arch}-musl"
 mise_runs >/dev/null
 

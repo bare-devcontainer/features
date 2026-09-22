@@ -3,16 +3,12 @@
 # pin-checksums.sh — re-pin a feature's vendored release checksums to a named
 # upstream release. Downloads the checksum file and the signature upstream
 # published for it, and writes both into the working tree only once the
-# signature verifies against the vendored public key, so a failed, truncated or
-# tampered download cannot land in the repository. Performs no git operations.
+# signature verifies against the vendored public key. Performs no git
+# operations.
 #
 # Which file belongs to which feature is listed in signed-material.json next to
-# this script. The release is named rather than looked up, so what gets pinned
-# is always what the caller asked for.
-#
-# Bumping a feature's mise version is this script plus a version bump in the
-# feature's devcontainer-feature.json, since the checksums decide which release
-# the feature installs.
+# this script. The checksums decide which release the feature installs, so
+# moving them also needs a version bump in its devcontainer-feature.json.
 #
 # Requires: minisign, jq, wget
 #

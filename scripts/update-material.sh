@@ -5,9 +5,8 @@
 # to stdout depending on whether anything changed; per-file download and
 # comparison progress goes to stderr. Performs no git or GitHub operations.
 #
-# Covers material published at a fixed URL, which is every signing key. The
-# release checksums pinned per feature move with a release rather than on their
-# own, so they are re-pinned by pin-checksums.sh instead.
+# Covers material published at a fixed URL, which is every signing key. Release
+# checksums move with the release they pin, so pin-checksums.sh handles those.
 #
 # Usage:
 #   update-material.sh
