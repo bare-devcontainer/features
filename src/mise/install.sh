@@ -175,25 +175,18 @@ fi
 home="${_REMOTE_USER_HOME:-$(getent passwd "${username}" | cut -d: -f6)}"
 group="$(id -gn "${username}")"
 
-# Gives every level it creates to the remote user too. ~/.local and ~/.cache
-# are shared with everything else the account runs, so one left owned by root
-# would lock the user out of directories this feature has nothing to do with.
-make_user_dir() {
-    local path="$1" current="" part
-    while IFS= read -r part; do
-        [ -n "${part}" ] || continue
-        current="${current}/${part}"
-        if [ ! -e "${current}" ]; then
-            mkdir "${current}"
-            chown "${username}:${group}" "${current}"
-        fi
-    done <<< "${path//\//$'\n'}"
-}
-
 # Created here rather than left to mise so that a volume mounted over either of
-# them is seeded with the remote user's ownership instead of root's.
-make_user_dir "${home}/${DATA_DIR}"
-make_user_dir "${home}/${CACHE_DIR}"
+# them is seeded with the remote user's ownership instead of root's. Every level
+# is handed over, not just the last: ~/.local and ~/.cache are shared with the
+# rest of the account, and one left owned by root would lock the user out of
+# directories this feature has nothing to do with.
+for dir in "${DATA_DIR}" "${CACHE_DIR}"; do
+    mkdir -p "${home}/${dir}"
+    while [ "${dir}" != "." ]; do
+        chown "${username}:${group}" "${home}/${dir}"
+        dir="$(dirname "${dir}")"
+    done
+done
 
 mkdir -p "$(dirname "${SHIMS_PARENT}")"
 ln -sfn "${home}/${DATA_DIR}" "${SHIMS_PARENT}"
