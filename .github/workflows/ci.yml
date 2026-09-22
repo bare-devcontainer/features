@@ -24,8 +24,6 @@ defaults:
     shell: bash -euo pipefail {0}
 
 jobs:
-  # Proves the checksums the install scripts verify their downloads against are
-  # the ones upstream signed.
   verify-material:
     name: Verify vendored checksums
     runs-on: ubuntu-latest

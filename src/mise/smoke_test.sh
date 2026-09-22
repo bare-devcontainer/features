@@ -4,8 +4,6 @@ set -euo pipefail
 
 failures=0
 
-# Runs a command and records the outcome instead of aborting, so a single run
-# reports every broken check rather than only the first one.
 check() {
     local label="$1"
     shift

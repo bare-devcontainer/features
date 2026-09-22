@@ -4,15 +4,10 @@
 # release to install and the checksum to expect both come from SHASUMS256.txt,
 # vendored with the feature; scripts/verify-material.sh checks its signature.
 #
-# The directories mise installs tools into and caches downloads in are prepared
-# for the remote user, at the paths the feature mounts volumes on and points
-# MISE_DATA_DIR and MISE_CACHE_DIR at.
-#
 # Expected environment variables, from the Dev Container specification,
 # injected by the CLI:
 #
-#   _REMOTE_USER       The account the container is attached as, and therefore
-#                      the one mise installs tools as.
+#   _REMOTE_USER       The account the container is attached as.
 
 set -euo pipefail
 
@@ -35,12 +30,9 @@ if [ ! -f "${SHASUMS}" ]; then
     exit 1
 fi
 
-# Every download lands here, so nothing the install fetches is left in the
-# image, whichever path the script exits by.
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "${tmpdir}"' EXIT
 
-# Debian package providing each command the installation needs.
 package_for() {
     case "$1" in
         wget) echo "wget" ;;
@@ -49,11 +41,10 @@ package_for() {
     esac
 }
 
-# Installs whatever the base image is missing, and nothing it already has.
 install_prerequisites() {
     local required=(sha256sum) missing=() cmd
 
-    # Either downloader will do, so one is only pulled in when neither is there.
+    # Either downloader will do, so wget is only pulled in when curl is absent.
     if ! command -v curl >/dev/null 2>&1; then
         required+=(wget)
     fi
@@ -64,7 +55,6 @@ install_prerequisites() {
         fi
     done
 
-    # HTTPS access to github.com needs a CA bundle.
     if [ ! -e /etc/ssl/certs/ca-certificates.crt ]; then
         missing+=(ca-certificates)
     fi
@@ -94,8 +84,6 @@ download() {
     fi
 }
 
-# Reads the release to install out of the vendored checksums, the only place it
-# is recorded.
 pinned_version() {
     local versions count
 
@@ -123,8 +111,6 @@ mise_arch() {
     esac
 }
 
-# Downloads the named release binary, checks it against the vendored checksums
-# and installs it as ${PREFIX}/bin/mise.
 install_binary() {
     local binary="$1" expected
 
@@ -142,8 +128,8 @@ install_binary() {
     install -m 755 "${tmpdir}/${binary}" "${PREFIX}/bin/mise"
 }
 
-# Runs the installed mise once, with every directory it might write to pointed
-# into the temporary directory so the check leaves nothing behind.
+# Every directory mise might write to is pointed into the temporary directory,
+# so running it here leaves nothing in the image.
 mise_runs() {
     env HOME="${tmpdir}/home" \
         MISE_DATA_DIR="${tmpdir}/home/data" \
@@ -172,11 +158,10 @@ if ! getent passwd "${username}" >/dev/null; then
     exit 1
 fi
 
-# The volumes are seeded from these directories on first use, ownership
-# included, but the Dev Containers CLI renumbers the remote user to the host
-# user's UID without touching anything outside the home directory. A dedicated
-# group keeps the directories writable through that: membership is recorded by
-# name, and the setgid bit keeps entries created later in the group.
+# The volumes are seeded from these directories, ownership included, and the
+# Dev Containers CLI renumbers the remote user's UID without touching anything
+# outside the home directory. Group membership is recorded by name and survives
+# that, and the setgid bit keeps entries created later in the group.
 if ! getent group "${GROUP}" >/dev/null; then
     groupadd --system "${GROUP}"
 fi

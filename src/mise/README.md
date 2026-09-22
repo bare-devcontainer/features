@@ -80,15 +80,9 @@ mise keeps its tool installs in `MISE_DATA_DIR` and its download cache in
 ]
 ```
 
-A feature's mount target is static and cannot reference the remote user's home
-directory, so the volumes sit under `/var` and the environment variables move the
-directories there. The shims directory moves with `MISE_DATA_DIR`.
-
-The volumes are seeded from the image on first use, ownership included. The Dev
-Containers CLI renumbers the remote user to the host user's UID and GID on Linux
-but only chowns the home directory, so the install script creates a `mise` system
-group, adds the remote user to it, and makes both directories group-writable and
-setgid: group membership is recorded by name and survives the renumbering.
+Both directories belong to a `mise` system group the remote user is added to, and
+are group-writable and setgid, so they stay writable after the Dev Containers CLI
+renumbers the remote user's UID.
 
 If an existing volume is reused after the host user's UID changed, files written
 under the old UID keep their owner-only modes and mise cannot replace them; clear

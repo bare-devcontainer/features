@@ -57,9 +57,7 @@ if cmp -s "$tmp_checksums" "$checksums" && cmp -s "$tmp_signature" "$signature";
 fi
 
 chmod 644 "$tmp_checksums" "$tmp_signature"
-# Moved out of the trap's reach, since the files are now the working tree's.
 mv "$tmp_checksums" "$checksums"
 mv "$tmp_signature" "$signature"
-trap - EXIT
 
 echo "Pinned ${checksums} to ${tag}. Bump the feature version to publish it." >&2
