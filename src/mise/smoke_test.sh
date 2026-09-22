@@ -31,34 +31,29 @@ check "mise is installed under /usr/local" \
     bash -c 'test "$(command -v mise)" = /usr/local/bin/mise'
 check "the installed binary is owned by root" \
     bash -c 'test "$(stat -c %u /usr/local/bin/mise)" = 0'
-check "MISE_DATA_DIR points at the mounted volume" \
-    bash -c 'test "${MISE_DATA_DIR:-}" = /var/lib/mise'
-check "MISE_CACHE_DIR points at the mounted volume" \
-    bash -c 'test "${MISE_CACHE_DIR:-}" = /var/cache/mise'
 check "the shims directory is on PATH" \
-    bash -c 'tr ":" "\n" <<< "${PATH}" | grep -qx /var/lib/mise/shims'
-check "remote user belongs to the mise group" \
-    bash -c 'id -nG | tr " " "\n" | grep -qx mise'
-check "data and cache directories are group-writable and setgid" \
-    bash -c 'test "$(stat -c "%A %G" /var/lib/mise)" = "drwxrwsr-x mise"
-             test "$(stat -c "%A %G" /var/cache/mise)" = "drwxrwsr-x mise"'
-check "data and cache directories are writable by the remote user" \
-    bash -c 'touch /var/lib/mise/.write-test /var/cache/mise/.write-test
-             rm /var/lib/mise/.write-test /var/cache/mise/.write-test'
-check "files created there are owned by the remote user" \
-    bash -c 'touch /var/lib/mise/.owner-test
-             owner="$(stat -c %u /var/lib/mise/.owner-test)"
-             rm /var/lib/mise/.owner-test
-             test "${owner}" = "$(id -u)"'
+    bash -c 'tr ":" "\n" <<< "${PATH}" | grep -qx /usr/local/share/mise/shims'
+check "the shims path resolves into the remote user's home" \
+    bash -c 'test "$(readlink -f /usr/local/share/mise)" = "${HOME}/.local/share/mise"'
+check "the data and cache directories are owned by the remote user" \
+    bash -c 'test "$(stat -c %u "${HOME}/.local/share/mise")" = "$(id -u)"
+             test "$(stat -c %u "${HOME}/.cache/mise")" = "$(id -u)"'
+check "the directories above them are owned by the remote user" \
+    bash -c 'for d in "${HOME}/.local" "${HOME}/.local/share" "${HOME}/.cache"; do
+                 test "$(stat -c %u "${d}")" = "$(id -u)" || exit 1
+             done'
+check "the data directory is writable by the remote user" \
+    bash -c 'touch "${HOME}/.local/share/mise/.write-test"
+             rm "${HOME}/.local/share/mise/.write-test"'
 # Node.js, whose backend takes the version list and the tarball from nodejs.org.
 # A backend that reaches the GitHub API cannot be used here: its unauthenticated
 # rate limit is per IP, and GitHub-hosted runners share one.
 check "mise installs and runs a tool" \
     mise exec node@24 -- node -e 'console.log("Hello, world!")'
 check "the tool was installed into the data directory" \
-    bash -c 'test -d /var/lib/mise/installs/node'
+    bash -c 'test -d "${HOME}/.local/share/mise/installs/node"'
 check "the tool's shim was written to the shims directory" \
-    bash -c 'test -x /var/lib/mise/shims/node'
+    bash -c 'test -x /usr/local/share/mise/shims/node'
 
 if [ "${failures}" -ne 0 ]; then
     echo "${failures} check(s) failed."

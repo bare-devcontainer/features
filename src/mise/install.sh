@@ -8,6 +8,7 @@
 # injected by the CLI:
 #
 #   _REMOTE_USER       The account the container is attached as.
+#   _REMOTE_USER_HOME  That account's home directory.
 
 set -euo pipefail
 
@@ -15,10 +16,12 @@ FEATURE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SHASUMS="${FEATURE_DIR}/SHASUMS256.txt"
 PREFIX="/usr/local"
 RELEASES_URL="https://github.com/jdx/mise/releases"
-# Coupled to containerEnv and mounts in devcontainer-feature.json.
-DATA_DIR="/var/lib/mise"
-CACHE_DIR="/var/cache/mise"
-GROUP="mise"
+# mise's own defaults, relative to the remote user's home directory.
+DATA_DIR=".local/share/mise"
+CACHE_DIR=".cache/mise"
+# Coupled to PATH in devcontainer-feature.json: a fixed path is the only kind
+# containerEnv can name, and it resolves to DATA_DIR through a symlink.
+SHIMS_PARENT="/usr/local/share/mise"
 
 if [ "$(id -u)" -ne 0 ]; then
     echo "(!) This feature must be installed as root." >&2
@@ -169,18 +172,30 @@ if ! getent passwd "${username}" >/dev/null; then
     echo "(!) Remote user '${username}' was not found in the password database." >&2
     exit 1
 fi
+home="${_REMOTE_USER_HOME:-$(getent passwd "${username}" | cut -d: -f6)}"
+group="$(id -gn "${username}")"
 
-# The volumes are seeded from these directories, ownership included, and the
-# Dev Containers CLI renumbers the remote user's UID without touching anything
-# outside the home directory. Group membership is recorded by name and survives
-# that, and the setgid bit keeps entries created later in the group.
-if ! getent group "${GROUP}" >/dev/null; then
-    groupadd --system "${GROUP}"
-fi
-usermod -aG "${GROUP}" "${username}"
+# Gives every level it creates to the remote user too. ~/.local and ~/.cache
+# are shared with everything else the account runs, so one left owned by root
+# would lock the user out of directories this feature has nothing to do with.
+make_user_dir() {
+    local path="$1" current="" part
+    while IFS= read -r part; do
+        [ -n "${part}" ] || continue
+        current="${current}/${part}"
+        if [ ! -e "${current}" ]; then
+            mkdir "${current}"
+            chown "${username}:${group}" "${current}"
+        fi
+    done <<< "${path//\//$'\n'}"
+}
 
-mkdir -p "${DATA_DIR}" "${CACHE_DIR}"
-chown "${username}:${GROUP}" "${DATA_DIR}" "${CACHE_DIR}"
-chmod 2775 "${DATA_DIR}" "${CACHE_DIR}"
+# Created here rather than left to mise so that a volume mounted over either of
+# them is seeded with the remote user's ownership instead of root's.
+make_user_dir "${home}/${DATA_DIR}"
+make_user_dir "${home}/${CACHE_DIR}"
+
+mkdir -p "$(dirname "${SHIMS_PARENT}")"
+ln -sfn "${home}/${DATA_DIR}" "${SHIMS_PARENT}"
 
 echo "Installed mise $("${PREFIX}/bin/mise" --version)."

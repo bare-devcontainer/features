@@ -3,24 +3,10 @@
     "version": "1.0.0",
     "name": "mise",
     "documentationURL": "https://github.com/bare-devcontainer/features/tree/main/src/mise",
-    "description": "Installs mise, the polyglot tool and runtime manager, from its GitHub release, verified against checksums committed to this repository, with its tool installs and download cache kept on volumes.",
+    "description": "Installs mise, the polyglot tool and runtime manager, from its GitHub release, verified against checksums committed to this repository, with its shims on PATH.",
     "containerEnv": {
-        "MISE_DATA_DIR": "/var/lib/mise",
-        "MISE_CACHE_DIR": "/var/cache/mise",
-        "PATH": "/var/lib/mise/shims:${PATH}"
+        "PATH": "/usr/local/share/mise/shims:${PATH}"
     },
-    "mounts": [
-        {
-            "source": "${devcontainerId}-mise-data",
-            "target": "/var/lib/mise",
-            "type": "volume"
-        },
-        {
-            "source": "${devcontainerId}-mise-cache",
-            "target": "/var/cache/mise",
-            "type": "volume"
-        }
-    ],
     "installsAfter": [
         "ghcr.io/devcontainers/features/common-utils"
     ]

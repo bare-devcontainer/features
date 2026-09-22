@@ -1,6 +1,5 @@
 The official release binary from [GitHub Releases](https://github.com/jdx/mise/releases)
-is installed as `/usr/local/bin/mise`, and the directories mise installs tools into
-and caches downloads in are placed on volumes the feature declares.
+is installed as `/usr/local/bin/mise`, and its shims directory is put on `PATH`.
 
 ## Requirements
 
@@ -42,60 +41,19 @@ for programs that do not load the shell configuration.
 
 ## Tool installs and download cache
 
-mise keeps its tool installs in `MISE_DATA_DIR` and its download cache in
-`MISE_CACHE_DIR`. The feature declares a volume for each and points mise at them:
+mise keeps its tool installs in `~/.local/share/mise` and its download cache in
+`~/.cache/mise`, its own defaults. Both are created for the remote user when the
+feature is installed, along with the `~/.local`, `~/.local/share` and `~/.cache`
+above them.
 
-```json
-"containerEnv": {
-    "MISE_DATA_DIR": "/var/lib/mise",
-    "MISE_CACHE_DIR": "/var/cache/mise",
-    "PATH": "/var/lib/mise/shims:${PATH}"
-},
-"mounts": [
-    {
-        "source": "${devcontainerId}-mise-data",
-        "target": "/var/lib/mise",
-        "type": "volume"
-    },
-    {
-        "source": "${devcontainerId}-mise-cache",
-        "target": "/var/cache/mise",
-        "type": "volume"
-    }
-]
-```
+`PATH` cannot name a path in the remote user's home directory, because a feature's
+`containerEnv` is fixed text and the remote user differs between images. The
+feature therefore symlinks `/usr/local/share/mise` to the data directory and puts
+`/usr/local/share/mise/shims` on `PATH`. Pointing `MISE_DATA_DIR` somewhere else
+leaves that symlink behind, so `PATH` then needs the new shims directory.
 
-Both directories belong to a `mise` system group the remote user is added to, and
-are group-writable and setgid, so they stay writable after the Dev Containers CLI
-renumbers the remote user's UID.
-
-If an existing volume is reused after the host user's UID changed, files written
-under the old UID keep their owner-only modes and mise cannot replace them; clear
-them with `rm -rf /var/lib/mise/* /var/cache/mise/*` (this removes the installed
-tools) or remove the volumes.
-
-The volumes are per dev container (`${devcontainerId}`). To share one across
-projects, or to put a directory somewhere else, declare a mount on the same target
-in `devcontainer.json`: mounts are merged by target with the last one winning, and
-`devcontainer.json` is merged last, so it replaces the feature's.
-
-```json
-"mounts": [
-    {
-        "source": "mise-data-shared",
-        "target": "/var/lib/mise",
-        "type": "volume"
-    }
-]
-```
-
-`containerEnv` is merged the same way, so setting `MISE_DATA_DIR` or
-`MISE_CACHE_DIR` there points mise elsewhere and leaves the feature's mount in place
-and unused; `PATH` then needs the new shims directory as well.
-
-mise's configuration (`~/.config/mise`) and state, including which `mise.toml` files
-have been trusted (`~/.local/state/mise`), stay in the remote user's home directory
-and are recreated by a rebuild.
+Neither directory survives a rebuild on its own; see [Tips](#tips) for keeping
+them on a volume.
 
 ## Not installed
 
@@ -145,6 +103,24 @@ removed when the script exits.
 
 - For the tags this feature is published under, see
   [Versions and pinning](https://github.com/bare-devcontainer/features#versions-and-pinning).
+- To keep the installed tools and the download cache across rebuilds, add named
+  volumes to `mounts` in `devcontainer.json`, with the targets under the remote
+  user's home directory:
+
+  ```json
+  "mounts": [
+      {
+          "source": "${devcontainerId}-mise-data",
+          "target": "/home/dev/.local/share/mise",
+          "type": "volume"
+      },
+      {
+          "source": "${devcontainerId}-mise-cache",
+          "target": "/home/dev/.cache/mise",
+          "type": "volume"
+      }
+  ]
+  ```
 - [`MISE_PARANOID`](https://mise.jdx.dev/paranoid.html) in `containerEnv` makes mise
   re-verify the provenance of the tools it installs and refuse untrusted
   configuration.
