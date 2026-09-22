@@ -52,12 +52,18 @@ check "files created there are owned by the remote user" \
              owner="$(stat -c %u /var/lib/mise/.owner-test)"
              rm /var/lib/mise/.owner-test
              test "${owner}" = "$(id -u)"'
+# Node.js, because mise's node backend takes both the version list and the
+# tarball from nodejs.org. Backends that resolve a version or verify an
+# artifact through the GitHub API cannot be used here: the API's unauthenticated
+# rate limit is per IP, which a GitHub-hosted runner shares with every other
+# runner behind the same address, so such a check fails whenever that quota is
+# spent (mise's core:python is one, via its artifact attestation check).
 check "mise installs and runs a tool" \
-    mise exec python@3 -- python -c 'print("Hello, world!")'
+    mise exec node@24 -- node -e 'console.log("Hello, world!")'
 check "the tool was installed into the data directory" \
-    bash -c 'test -d /var/lib/mise/installs/python'
+    bash -c 'test -d /var/lib/mise/installs/node'
 check "the tool's shim was written to the shims directory" \
-    bash -c 'test -x /var/lib/mise/shims/python'
+    bash -c 'test -x /var/lib/mise/shims/node'
 
 if [ "${failures}" -ne 0 ]; then
     echo "${failures} check(s) failed."
