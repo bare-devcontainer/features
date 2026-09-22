@@ -160,9 +160,9 @@ arch="$(mise_arch)"
 
 echo "Installing mise ${mise_version} (linux-${arch}-musl) into ${PREFIX}/bin..."
 
-# The musl build is statically linked, so it neither depends on the image's
-# glibc nor pays dynamic relocation at startup — a cost the shims on PATH would
-# carry on every tool invocation, since each one re-execs this binary.
+# The musl build is statically linked, so it runs whatever the image's glibc
+# version is. The glibc build does not, and a release can require a newer glibc
+# than the image provides.
 install_binary "mise-${mise_version}-linux-${arch}-musl"
 mise_runs >/dev/null
 
