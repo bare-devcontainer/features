@@ -4,9 +4,10 @@ and caches downloads in are placed on volumes the feature declares.
 
 ## Requirements
 
-- A `linux-x64` or `linux-arm64` image. The glibc build is installed where the
-  image's glibc is new enough to run it, and the statically linked musl build
-  otherwise, so any Debian or Ubuntu release works.
+- A `linux-x64` or `linux-arm64` image. The statically linked musl build is the
+  one installed, so mise itself depends on no library in the image and any
+  Debian or Ubuntu release works. Which libc the tools mise installs are built
+  for is detected from the image, not from that choice.
 - `wget` (or `curl`), `sha256sum` and a CA bundle, for the download and the checksum
   check. Any of those the image is missing are installed with `apt-get`, so an image
   without them has to be Debian or Ubuntu based; an image that already has them
@@ -45,7 +46,8 @@ as a language image that needs a second toolchain or a linter the project pins.
 
 ## Installed software
 
-- mise, installed as `/usr/local/bin/mise`, owned by root.
+- mise, the statically linked `linux-*-musl` build, installed as
+  `/usr/local/bin/mise` and owned by root.
 
 Nothing else: no tool is installed until the project asks for it. `mise install`
 installs everything a project's `mise.toml` declares, and `mise exec <tool>@<version>

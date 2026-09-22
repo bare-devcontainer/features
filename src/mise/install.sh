@@ -170,19 +170,16 @@ install_prerequisites
 mise_version="$(pinned_version)"
 arch="$(mise_arch)"
 
-echo "Installing mise ${mise_version} (linux-${arch}) into ${PREFIX}/bin..."
+echo "Installing mise ${mise_version} (linux-${arch}-musl) into ${PREFIX}/bin..."
 
-# The glibc build is what upstream's installer picks on a glibc image, but a
-# release can require a newer glibc than the image provides, in which case it
-# fails to start at all. The statically linked musl build runs on any image, so
-# it is installed in that case, verified against the same vendored checksums.
-install_binary "mise-${mise_version}-linux-${arch}"
-if ! output="$(mise_runs 2>&1)"; then
-    echo "(*) The glibc build of mise ${mise_version} does not run on this image; installing the musl build instead." >&2
-    echo "${output}" | sed 's/^/    /' >&2
-    install_binary "mise-${mise_version}-linux-${arch}-musl"
-    mise_runs >/dev/null
-fi
+# The statically linked musl build, not the glibc build upstream's installer
+# picks on a glibc host. It runs whatever the image's glibc version is, and it
+# starts an order of magnitude faster, which the shims on PATH pay on every
+# tool invocation because each one re-execs this binary. The libc mise installs
+# *tools* for is detected from the image rather than from this build, so the
+# choice stops at mise itself.
+install_binary "mise-${mise_version}-linux-${arch}-musl"
+mise_runs >/dev/null
 
 username="${_REMOTE_USER:-root}"
 if ! getent passwd "${username}" >/dev/null; then
