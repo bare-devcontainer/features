@@ -68,10 +68,22 @@ install_prerequisites() {
         exit 1
     fi
 
+    # An image that ships package lists means them to be there, and this script
+    # runs after it was built, so only lists its own apt-get update fetched are
+    # removed. "lock" and "partial" are left by a cleaned image and do not count.
+    local lists_shipped=false
+    if find /var/lib/apt/lists -maxdepth 1 -type f ! -name lock -print -quit 2>/dev/null \
+        | grep -q .; then
+        lists_shipped=true
+    fi
+
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -y
     apt-get install -y --no-install-recommends "${missing[@]}"
-    rm -rf /var/lib/apt/lists/*
+
+    if [ "${lists_shipped}" = false ]; then
+        rm -rf /var/lib/apt/lists/*
+    fi
 }
 
 download() {
