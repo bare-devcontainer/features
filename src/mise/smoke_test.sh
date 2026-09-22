@@ -31,10 +31,6 @@ check "mise is installed under /usr/local" \
     bash -c 'test "$(command -v mise)" = /usr/local/bin/mise'
 check "the installed binary is owned by root" \
     bash -c 'test "$(stat -c %u /usr/local/bin/mise)" = 0'
-check "the shims directory is on PATH" \
-    bash -c 'tr ":" "\n" <<< "${PATH}" | grep -qx /usr/local/share/mise/shims'
-check "the shims path resolves into the remote user's home" \
-    bash -c 'test "$(readlink -f /usr/local/share/mise)" = "${HOME}/.local/share/mise"'
 check "the data and cache directories are owned by the remote user" \
     bash -c 'test "$(stat -c %u "${HOME}/.local/share/mise")" = "$(id -u)"
              test "$(stat -c %u "${HOME}/.cache/mise")" = "$(id -u)"'
@@ -53,7 +49,7 @@ check "mise installs and runs a tool" \
 check "the tool was installed into the data directory" \
     bash -c 'test -d "${HOME}/.local/share/mise/installs/node"'
 check "the tool's shim was written to the shims directory" \
-    bash -c 'test -x /usr/local/share/mise/shims/node'
+    bash -c 'test -x "${HOME}/.local/share/mise/shims/node"'
 
 if [ "${failures}" -ne 0 ]; then
     echo "${failures} check(s) failed."

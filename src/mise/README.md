@@ -1,7 +1,7 @@
 
 # mise (mise)
 
-Installs mise, the polyglot tool and runtime manager, from its GitHub release, verified against checksums committed to this repository, with its shims on PATH.
+Installs mise, the polyglot tool and runtime manager, from its GitHub release, verified against checksums committed to this repository.
 
 ## Example Usage
 
@@ -14,7 +14,7 @@ Installs mise, the polyglot tool and runtime manager, from its GitHub release, v
 
 
 The official release binary from [GitHub Releases](https://github.com/jdx/mise/releases)
-is installed as `/usr/local/bin/mise`, and its shims directory is put on `PATH`.
+is installed as `/usr/local/bin/mise`.
 
 ## Requirements
 
@@ -50,9 +50,7 @@ newest feature release when the container is built; pin it to hold a mise releas
 - mise, the statically linked `linux-*-musl` build, installed as
   `/usr/local/bin/mise` and owned by root.
 
-Nothing else: no tool is installed until the project asks for it. The shims
-directory is on `PATH`, so a tool resolves as soon as mise installs it, including
-for programs that do not load the shell configuration.
+Nothing else: no tool is installed until the project asks for it.
 
 ## Tool installs and download cache
 
@@ -60,12 +58,6 @@ mise keeps its tool installs in `~/.local/share/mise` and its download cache in
 `~/.cache/mise`, its own defaults. Both are created for the remote user when the
 feature is installed, along with the `~/.local`, `~/.local/share` and `~/.cache`
 above them.
-
-`PATH` cannot name a path in the remote user's home directory, because a feature's
-`containerEnv` is fixed text and the remote user differs between images. The
-feature therefore symlinks `/usr/local/share/mise` to the data directory and puts
-`/usr/local/share/mise/shims` on `PATH`. Pointing `MISE_DATA_DIR` somewhere else
-leaves that symlink behind, so `PATH` then needs the new shims directory.
 
 Neither directory survives a rebuild on its own; see [Tips](#tips) for keeping
 them on a volume.
@@ -76,8 +68,8 @@ them on a volume.
 - **No development headers beyond libc.** A backend that downloads prebuilt binaries
   works as-is; one that builds from source needs the `-dev` packages of the
   libraries it links against.
-- **No shell activation.** The shell configuration is left untouched; the shims
-  directory on `PATH` is what makes installed tools resolve.
+- **No `PATH` entry and no shell activation.** `mise exec` and `mise run` work as
+  they are; see [Tips](#tips) for making tools resolve by name.
 
 ## Supply chain
 
@@ -136,6 +128,18 @@ removed when the script exits.
       }
   ]
   ```
+- To have tools resolve by name, put the shims directory in `remoteEnv` in
+  `devcontainer.json`, with the path under the remote user's home directory:
+
+  ```json
+  "remoteEnv": {
+      "PATH": "/home/dev/.local/share/mise/shims:${containerEnv:PATH}"
+  }
+  ```
+
+  `remoteEnv` applies to the remote user rather than to every process in the
+  container, which a feature's `containerEnv` cannot express. `mise activate` in
+  the shell configuration covers interactive shells instead.
 - [`MISE_PARANOID`](https://mise.jdx.dev/paranoid.html) in `containerEnv` makes mise
   re-verify the provenance of the tools it installs and refuse untrusted
   configuration.

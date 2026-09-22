@@ -16,8 +16,6 @@ FEATURE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SHASUMS="${FEATURE_DIR}/SHASUMS256.txt"
 PREFIX="/usr/local"
 RELEASES_URL="https://github.com/jdx/mise/releases"
-# Coupled to PATH in devcontainer-feature.json.
-SHIMS_PARENT="/usr/local/share/mise"
 
 if [ "$(id -u)" -ne 0 ]; then
     echo "(!) This feature must be installed as root." >&2
@@ -176,7 +174,5 @@ group="$(id -gn "${username}")"
 install -d -o "${username}" -g "${group}" \
     "${home}/.local" "${home}/.local/share" "${home}/.local/share/mise" \
     "${home}/.cache" "${home}/.cache/mise"
-
-ln -sfn "${home}/.local/share/mise" "${SHIMS_PARENT}"
 
 echo "Installed mise $("${PREFIX}/bin/mise" --version)."
