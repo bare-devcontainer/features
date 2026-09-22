@@ -107,10 +107,26 @@ removes the installed tools) or remove the volumes. Files created afterwards are
 unaffected.
 
 The volumes are per dev container (`${devcontainerId}`) and are not shared between
-projects. Mounts declared by a feature cannot be disabled from `devcontainer.json`,
-but `containerEnv` there takes precedence over a feature's, so setting
-`MISE_DATA_DIR` or `MISE_CACHE_DIR` points mise somewhere else and leaves the volume
-mounted and unused. `PATH` then needs the new shims directory as well.
+projects. To share one across projects, or to put a directory somewhere else
+entirely, declare a mount on the same target in `devcontainer.json`: mounts are
+merged by target with the last one winning, and `devcontainer.json` is merged
+last, so it replaces the feature's rather than being added alongside it.
+
+```json
+"mounts": [
+    {
+        "source": "mise-data-shared",
+        "target": "/var/lib/mise",
+        "type": "volume"
+    }
+]
+```
+
+Pointing mise at a different path works the same way, since `containerEnv` is
+merged per variable with `devcontainer.json` last: setting `MISE_DATA_DIR` or
+`MISE_CACHE_DIR` there overrides the feature's. The feature's mount then stays
+in place and unused unless a mount on the same target replaces it, and `PATH`
+needs the new shims directory as well.
 
 mise's configuration (`~/.config/mise`) and state, including which `mise.toml`
 files have been trusted (`~/.local/state/mise`), stay in the remote user's home
