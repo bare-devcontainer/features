@@ -102,18 +102,11 @@ install script per Feature, and the signing material sitting next to it — a si
 upstream's own checksum file with its signature. Each Feature's README shows how to
 inspect what it verifies against.
 
-**Where verification happens.** A Feature whose upstream signs its checksums ships those
-checksums, so its install verifies the download with `sha256sum` alone; the `CI` workflow
-checks them against upstream's signature on every change
-([`scripts/verify-material.sh`](scripts/verify-material.sh)).
-
 **How the trusted material changes.** Only through a pull request. The
 `Update Trusted Material` workflow
 ([`.github/workflows/update-material.yml`](.github/workflows/update-material.yml)) checks
 upstream weekly and opens one when a key has changed, so every rotation is visible in
-the history of this repository rather than picked up silently at build time. Vendored
-release checksums move only when the release they pin does, through
-[`scripts/pin-checksums.sh`](scripts/pin-checksums.sh).
+the history of this repository rather than picked up silently at build time.
 
 **What is not covered.** The upstream projects themselves are still trusted: verification
 proves a download came from them unaltered, not that what they published is sound. These

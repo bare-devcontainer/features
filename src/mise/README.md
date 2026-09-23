@@ -56,8 +56,7 @@ Nothing else: no tool is installed until the project asks for it.
 
 mise keeps its tool installs in `~/.local/share/mise` and its download cache in
 `~/.cache/mise`, its own defaults. Both are created for the remote user when the
-feature is installed, along with the `~/.local`, `~/.local/share` and `~/.cache`
-above them.
+feature is installed.
 
 Neither directory survives a rebuild on its own; see [Tips](#tips) for keeping
 them on a volume.
@@ -76,19 +75,10 @@ them on a volume.
 The binary is downloaded from `https://github.com/jdx/mise/releases/` and checked
 against `SHASUMS256.txt`, vendored with the feature: upstream's own checksum file,
 committed verbatim together with the minisign signature upstream published for it.
-Checking the download therefore needs `sha256sum` and nothing else.
-
-The signature is verified in CI rather than in the container. The `CI` workflow runs
-[`scripts/verify-material.sh`](https://github.com/bare-devcontainer/features/blob/main/scripts/verify-material.sh)
-on every change, which checks `SHASUMS256.txt` against `SHASUMS256.txt.minisig`
-using the vendored public key.
 
 The public key is a copy of
 [`minisign.pub`](https://github.com/jdx/mise/blob/main/minisign.pub) from the mise
-repository, refreshed by this repository's `Update Trusted Material` workflow. The
-checksums move only when the pinned release does, through
-[`scripts/pin-checksums.sh`](https://github.com/bare-devcontainer/features/blob/main/scripts/pin-checksums.sh),
-which writes what it downloaded only once the signature verifies.
+repository, refreshed by this repository's `Update Trusted Material` workflow.
 
 To check the material yourself before pinning the feature:
 
@@ -137,9 +127,7 @@ removed when the script exits.
   }
   ```
 
-  `remoteEnv` applies to the remote user rather than to every process in the
-  container, which a feature's `containerEnv` cannot express. `mise activate` in
-  the shell configuration covers interactive shells instead.
+  `mise activate` in the shell configuration covers interactive shells instead.
 - [`MISE_PARANOID`](https://mise.jdx.dev/paranoid.html) in `containerEnv` makes mise
   re-verify the provenance of the tools it installs and refuse untrusted
   configuration.
