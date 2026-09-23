@@ -3,12 +3,11 @@
 # pin-checksums.sh — re-pin a feature's vendored release checksums to a named
 # upstream release. Downloads the checksum file and the signature upstream
 # published for it, and writes both into the working tree only once the
-# signature verifies against the vendored public key. Performs no git
-# operations.
+# signature verifies against the vendored public key, and sets the feature
+# version to the release version. Performs no git operations.
 #
 # Which file belongs to which feature is listed in signed-material.json next to
-# this script. The checksums decide which release the feature installs, so
-# moving them also needs a version bump in its devcontainer-feature.json.
+# this script.
 #
 # Requires: minisign, jq, wget
 #
@@ -42,7 +41,8 @@ releases="https://github.com/${repository}/releases/download/${tag}"
 
 tmp_checksums=$(mktemp)
 tmp_signature=$(mktemp)
-trap 'rm -f "$tmp_checksums" "$tmp_signature"' EXIT
+tmp_metadata=$(mktemp)
+trap 'rm -f "$tmp_checksums" "$tmp_signature" "$tmp_metadata"' EXIT
 
 echo "Downloading ${repository} ${tag} checksums" >&2
 wget -q -T 30 -t 3 -O "$tmp_checksums" "${releases}/$(basename "$checksums")"
@@ -60,4 +60,8 @@ chmod 644 "$tmp_checksums" "$tmp_signature"
 mv "$tmp_checksums" "$checksums"
 mv "$tmp_signature" "$signature"
 
-echo "Pinned ${checksums} to ${tag}. Bump the feature version to publish it." >&2
+metadata="src/${feature}/devcontainer-feature.json"
+jq --indent 4 --arg version "${tag#v}" '.version = $version' "$metadata" > "$tmp_metadata"
+cat "$tmp_metadata" > "$metadata"
+
+echo "Pinned ${checksums} and ${metadata} to ${tag}." >&2

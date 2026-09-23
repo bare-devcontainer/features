@@ -1,6 +1,6 @@
 {
     "id": "mise",
-    "version": "1.0.0",
+    "version": "2026.9.10",
     "name": "mise",
     "documentationURL": "https://github.com/bare-devcontainer/features/tree/main/src/mise",
     "description": "Installs mise, the polyglot tool and runtime manager, from its GitHub release, verified against checksums committed to this repository.",

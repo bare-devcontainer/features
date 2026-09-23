@@ -7,7 +7,7 @@ Installs mise, the polyglot tool and runtime manager, from its GitHub release, v
 
 ```json
 "features": {
-    "ghcr.io/bare-devcontainer/features/mise:1": {}
+    "ghcr.io/bare-devcontainer/features/mise:2026": {}
 }
 ```
 
@@ -31,17 +31,17 @@ The feature takes no options:
 
 ```json
 "features": {
-    "ghcr.io/bare-devcontainer/features/mise:1": {}
+    "ghcr.io/bare-devcontainer/features/mise:latest": {}
 }
 ```
 
-The checksums committed with the feature cover one mise release, so the feature
-version is what selects which mise is installed. A tag such as `:1` resolves to the
-newest feature release when the container is built; pin it to hold a mise release:
+The feature version is the mise version it installs. `:latest` resolves to the
+newest feature release when the container is built; pin the exact version to hold
+a mise release:
 
 ```json
 "features": {
-    "ghcr.io/bare-devcontainer/features/mise:1.0.0": {}
+    "ghcr.io/bare-devcontainer/features/mise:2026.9.10": {}
 }
 ```
 
