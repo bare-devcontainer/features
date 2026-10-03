@@ -5,6 +5,9 @@
 # to stdout depending on whether anything changed; per-file download and
 # comparison progress goes to stderr. Performs no git or GitHub operations.
 #
+# Covers material published at a fixed URL, which is every signing key. Release
+# checksums move with the release they pin, so pin-checksums.sh handles those.
+#
 # Usage:
 #   update-material.sh
 set -euo pipefail
@@ -14,6 +17,10 @@ MATERIALS='[
   {
     "path": "src/claude-code/claude-code.asc",
     "url": "https://downloads.claude.ai/keys/claude-code.asc"
+  },
+  {
+    "path": "src/mise/mise-minisign.pub",
+    "url": "https://raw.githubusercontent.com/jdx/mise/main/minisign.pub"
   },
   {
     "path": "src/node/node-keyring.kbx",

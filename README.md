@@ -12,6 +12,7 @@ signing material committed to this repository, and requires no other Feature.
 | Feature | What you get | Source and verification |
 |---------|--------------|-------------------------|
 | [claude-code](src/claude-code)<br>`ghcr.io/bare-devcontainer/features/claude-code` | Claude Code, Anthropic's agentic coding CLI, with the VS Code extension requested alongside it. Credentials, settings and history live on a volume, so a rebuild does not mean signing in again. | Anthropic's APT repository. The package signature is checked with a key committed to this repository. |
+| [mise](src/mise)<br>`ghcr.io/bare-devcontainer/features/mise` | mise, the polyglot tool and runtime manager, for the toolchains and CLIs a project pins itself. | [GitHub Releases](https://github.com/jdx/mise/releases). The download is checked against upstream's own checksum file, committed to this repository with the minisign signature published for it. |
 | [node](src/node)<br>`ghcr.io/bare-devcontainer/features/node` | Node.js, with Corepack in place of npm, so the package manager comes from the project's `packageManager` field rather than from the image. | [nodejs.org](https://nodejs.org/dist/). The release checksums are checked against the Node.js release keys committed to this repository. |
 
 Each Feature's README documents its options, requirements, what it deliberately leaves
@@ -97,8 +98,9 @@ no key is fetched while the container is built, and no other Feature's install s
 runs on its behalf.
 
 **What you can check before pinning.** Every input is a file in this repository: one
-install script per Feature, and the signing material sitting next to it. Each Feature's
-README shows how to inspect its key.
+install script per Feature, and the signing material sitting next to it — a signing key, or
+upstream's own checksum file with its signature. Each Feature's README shows how to
+inspect what it verifies against.
 
 **How the trusted material changes.** Only through a pull request. The
 `Update Trusted Material` workflow
