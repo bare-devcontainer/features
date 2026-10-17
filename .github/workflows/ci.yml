@@ -25,6 +25,24 @@ defaults:
     shell: bash -euo pipefail {0}
 
 jobs:
+  verify-material:
+    name: Verify vendored checksums
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install minisign
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends minisign
+
+      - name: Verify vendored checksums
+        run: bash scripts/verify-material.sh
+
   discover:
     name: Discover features
     runs-on: ubuntu-latest
