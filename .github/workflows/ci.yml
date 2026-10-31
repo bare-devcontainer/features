@@ -16,7 +16,7 @@ concurrency:
 
 env:
   # renovate: datasource=npm depName=@devcontainers/cli
-  DEVCONTAINER_CLI_VERSION: "0.89.0"
+  DEVCONTAINER_CLI_VERSION: "0.90.0"
 
 # The runner's default shell adds only -e, so an unset variable or a failure
 # mid-pipeline would otherwise pass silently.
